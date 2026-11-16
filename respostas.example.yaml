@@ -1,0 +1,46 @@
+# EXEMPLO com valores fictícios. Copie para respostas.yaml (que fica FORA do git) e preencha os seus.
+# Campo null = o bot NÃO responde sozinho: pula a vaga/pergunta e registra o motivo.
+
+pretensao_salarial:
+  brl_mensal_minimo: 0
+  usd_mensal_minimo: null
+  so_responder_quando_perguntado: true
+  observacao: null
+
+disponibilidade:
+  inicio: "imediata"
+  carga_horaria: "conforme a proposta da vaga"
+  turno_preferido: null
+
+tipo_contrato_aceito: [estagio, clt, pj]
+
+localizacao:
+  cidade: "Cidade"
+  estado: "UF"
+  pais: "Brasil"
+  aceita_presencial_em: ["Cidade, UF"]
+  aceita_remoto: true
+  aceita_mudar_de_cidade: false
+
+autorizacao_trabalho:
+  brasil: true
+  exterior: "somente remoto, como contratado (PJ), em qualquer país"
+
+dados_demograficos:
+  genero: null
+  raca_cor: null
+  pcd: null
+
+idiomas:
+  portugues: "nativo"
+  ingles: "avançado"
+
+extras:
+  data_nascimento: null          # formato AAAA-MM-DD
+  previsao_formatura: null       # formato AAAA-MM
+  possui_cnh: null
+  parente_na_empresa: false
+  ja_trabalhou_na_empresa: false
+  como_conheceu_a_vaga: "Portal de vagas"
+  aceita_viajar: null
+  aceita_trabalhar_fins_de_semana: null

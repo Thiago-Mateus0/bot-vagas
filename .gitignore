@@ -1,0 +1,15 @@
+.claude/.bloqueios
+.claude/NAO_PARAR
+.claude/settings.local.json
+demo/*.db
+demo/*.db-journal
+*.egg-info/
+logs/
+perfil.yaml
+__pycache__/
+.pytest_cache/
+respostas.yaml
+saida/
+vagas.db
+vagas.db-journal
+.venv/

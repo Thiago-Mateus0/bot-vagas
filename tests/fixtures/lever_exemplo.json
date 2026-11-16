@@ -1,0 +1,36 @@
+[
+  {
+    "id": "a1b2c3d4-0000-0000-0000-000000000001",
+    "text": "Junior Backend Developer",
+    "hostedUrl": "https://jobs.lever.co/exemplolever/a1b2c3d4-0000-0000-0000-000000000001",
+    "applyUrl": "https://jobs.lever.co/exemplolever/a1b2c3d4-0000-0000-0000-000000000001/apply",
+    "createdAt": 1761955200000,
+    "workplaceType": "remote",
+    "categories": {"location": "Brazil", "team": "Engineering", "commitment": "Full-time"},
+    "descriptionPlain": "We build LLM integrations and agents for customer support.",
+    "lists": [
+      {"text": "Requirements", "content": "<li>TypeScript or Python</li><li>FastAPI / Node.js</li><li>PostgreSQL</li>"}
+    ],
+    "additionalPlain": "Entry level welcome."
+  },
+  {
+    "id": "a1b2c3d4-0000-0000-0000-000000000002",
+    "text": "Data Scientist",
+    "hostedUrl": "https://jobs.lever.co/exemplolever/a1b2c3d4-0000-0000-0000-000000000002",
+    "createdAt": 1761955200000,
+    "workplaceType": "hybrid",
+    "categories": {"location": "São Paulo"},
+    "descriptionPlain": "pandas, scikit-learn, estatística.",
+    "lists": []
+  },
+  {
+    "id": "a1b2c3d4-0000-0000-0000-000000000003",
+    "text": "Estágio em Engenharia de Software",
+    "hostedUrl": "https://jobs.lever.co/exemplolever/a1b2c3d4-0000-0000-0000-000000000003",
+    "createdAt": 1761955200000,
+    "workplaceType": "onsite",
+    "categories": {"location": "Maceió"},
+    "descriptionPlain": "Trabalho presencial no escritório.",
+    "lists": []
+  }
+]

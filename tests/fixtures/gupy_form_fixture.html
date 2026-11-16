@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Formulário de teste (fixture) — não é a Gupy</title></head>
+<body>
+<script>
+  // registra TODO click/submit/keydown-Enter que chegue ao documento (confiável ou sintético)
+  window.__eventos = [];
+  document.addEventListener('click', e => window.__eventos.push('click:' + (e.target.id || e.target.tagName)), true);
+  document.addEventListener('submit', e => { e.preventDefault(); window.__eventos.push('submit'); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') window.__eventos.push('enter'); }, true);
+  window.__submits = 0;
+  HTMLFormElement.prototype.submit = function () { window.__submits += 1; };
+</script>
+<h1>Candidatura — Estágio Backend</h1>
+<form id="form" action="/enviar" method="post">
+  <label for="pretensao">Pretensão salarial (R$) *</label>
+  <input id="pretensao" name="salario" type="text" placeholder="R$" required>
+
+  <label for="inicio">Disponibilidade para início</label>
+  <input id="inicio" name="inicio" type="text">
+
+  <label for="carga">Carga horária disponível</label>
+  <input id="carga" name="carga_horaria" type="text">
+
+  <label for="cidade">Cidade *</label>
+  <input id="cidade" name="cidade" type="text" required>
+
+  <label for="estado">Estado</label>
+  <input id="estado" name="estado" type="text" value="SP">
+
+  <label for="pais">País</label>
+  <select id="pais" name="pais">
+    <option value="">Selecione</option>
+    <option value="ar">Argentina</option>
+    <option value="br">Brasil</option>
+    <option value="pt">Portugal</option>
+  </select>
+
+  <label for="nasc">Data de nascimento (dd/mm/aaaa) *</label>
+  <input id="nasc" name="nascimento" type="text" placeholder="dd/mm/aaaa" required>
+
+  <label for="nasc_date">Date of birth</label>
+  <input id="nasc_date" name="dob" type="date">
+
+  <label for="formatura">Previsão de formatura (mm/aaaa)</label>
+  <input id="formatura" name="formatura" type="text" placeholder="mm/aaaa">
+
+  <label for="genero">Gênero (pergunta voluntária)</label>
+  <select id="genero" name="genero">
+    <option value="">Selecione</option>
+    <option value="f">Mulher cis</option>
+    <option value="m">Homem cis</option>
+    <option value="nb">Não binário</option>
+    <option value="x">Prefiro não responder</option>
+  </select>
+
+  <label for="raca">Raça/cor</label>
+  <select id="raca" name="raca">
+    <option value="">Selecione</option>
+    <option value="1">Branca</option>
+    <option value="2">Preta</option>
+    <option value="3">Parda</option>
+    <option value="4">Amarela</option>
+    <option value="5">Indígena</option>
+  </select>
+
+  <fieldset id="fs_pcd"><legend>Você é pessoa com deficiência (PCD)? *</legend>
+    <label><input type="radio" name="pcd" value="s" required> Sim</label>
+    <label><input type="radio" name="pcd" value="n"> Não</label>
+  </fieldset>
+
+  <fieldset id="fs_parente"><legend>Possui parente na empresa?</legend>
+    <label><input type="radio" name="parente" value="s"> Sim</label>
+    <label><input type="radio" name="parente" value="n"> Não</label>
+  </fieldset>
+
+  <fieldset id="fs_cnh"><legend>Possui CNH? *</legend>
+    <label><input type="radio" name="cnh" value="s" required> Sim</label>
+    <label><input type="radio" name="cnh" value="n"> Não</label>
+  </fieldset>
+
+  <label for="conheceu">Como você conheceu a vaga?</label>
+  <input id="conheceu" name="conheceu" type="text">
+
+  <label for="ingles">Nível de inglês</label>
+  <select id="ingles" name="ingles">
+    <option value="">Selecione</option>
+    <option value="b">Básico</option>
+    <option value="i">Intermediário</option>
+    <option value="a">Avançado</option>
+  </select>
+
+  <label for="viajar">Disponibilidade para viajar?</label>
+  <select id="viajar" name="viajar">
+    <option value="">Selecione</option>
+    <option value="s">Sim</option>
+    <option value="n">Não</option>
+  </select>
+
+  <label for="porque">Por que você quer trabalhar aqui? *</label>
+  <textarea id="porque" name="porque" required></textarea>
+
+  <label for="linkedin">LinkedIn *</label>
+  <input id="linkedin" name="linkedin" type="url" required>
+
+  <label for="cv">Anexe seu currículo (PDF) *</label>
+  <input id="cv" name="curriculo" type="file" accept=".pdf" required>
+
+  <label for="portfolio">Portfólio (arquivo)</label>
+  <input id="portfolio" name="portfolio" type="file">
+
+  <label><input id="lgpd" type="checkbox" name="lgpd" required> Li e aceito a Política de Privacidade (LGPD) *</label>
+
+  <button id="enviar" type="submit">Enviar candidatura</button>
+</form>
+</body></html>

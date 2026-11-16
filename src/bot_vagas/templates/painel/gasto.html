@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titulo %}Gasto{% endblock %}
+{% block conteudo %}
+<h1>Gasto com o modelo <span class="sub">({{ g.mes }}, {{ g.modelo }})</span></h1>
+
+<section class="gasto-mes">
+  <p class="grande {% if g.teto_atingido %}erro{% elif g.perto_do_teto %}aviso{% endif %}">
+    {{ g.gasto_usd|usd }} <span class="sub">de {{ g.teto_usd|usd }} ({{ '%.1f'|format(g.percentual) }}%)</span>
+  </p>
+  <progress class="barra {% if g.teto_atingido %}erro{% elif g.perto_do_teto %}aviso{% endif %}"
+            aria-label="Gasto do mês em relação ao teto" max="100" value="{{ '%.1f'|format(g.percentual) }}">
+    {{ '%.1f'|format(g.percentual) }}%
+  </progress>
+  {% if g.teto_atingido %}
+  <p class="faixa erro" role="alert">Teto atingido. O bot para de avaliar vagas até o próximo mês (ou até você ajustar custos.yaml).</p>
+  {% elif g.perto_do_teto %}
+  <p class="faixa aviso" role="status">80% ou mais do teto já foi usado.</p>
+  {% endif %}
+
+  <dl class="ficha">
+    <div><dt>Chamadas no mês</dt><dd>{{ g.chamadas|inteiro }}</dd></div>
+    <div><dt>Tokens de entrada</dt><dd>{{ g.tokens_entrada|inteiro }}</dd></div>
+    <div><dt>Tokens de saída</dt><dd>{{ g.tokens_saida|inteiro }}</dd></div>
+    <div><dt>Total desde o início</dt><dd>{{ g.total_geral.custo_usd|usd }} em {{ g.total_geral.chamadas|inteiro }} chamadas</dd></div>
+  </dl>
+</section>
+
+<section>
+  <h2>Últimas chamadas</h2>
+  {% if not chamadas %}
+  <p class="vazio">Nenhuma chamada registrada.</p>
+  {% else %}
+  <div class="tabela-rolagem">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Quando</th>
+        <th scope="col">Finalidade</th>
+        <th scope="col">Vaga</th>
+        <th scope="col" class="num">Entrada</th>
+        <th scope="col" class="num">Saída</th>
+        <th scope="col" class="num">Cache (leit./escr.)</th>
+        <th scope="col" class="num">Custo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in chamadas %}
+      <tr>
+        <td>{{ c.quando|data }}</td>
+        <td>{{ c.finalidade }}</td>
+        <td>{% if c.chave_vaga %}<a href="/vaga/{{ c.chave_vaga|urlencode }}">{{ c.empresa or '?' }} — {{ c.cargo or '?' }}</a>{% else %}–{% endif %}</td>
+        <td class="num">{{ c.tokens_entrada|inteiro }}</td>
+        <td class="num">{{ c.tokens_saida|inteiro }}</td>
+        <td class="num">{{ c.tokens_cache_leitura|inteiro }} / {{ c.tokens_cache_escrita|inteiro }}</td>
+        <td class="num">{{ c.custo_usd|usd }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

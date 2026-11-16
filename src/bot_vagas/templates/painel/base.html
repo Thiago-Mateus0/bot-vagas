@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block titulo %}Painel{% endblock %} — bot-vagas</title>
+  <link rel="stylesheet" href="/static/painel.css">
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+  <header class="topo">
+    <div class="marca">
+      <strong>bot-vagas</strong> <span class="sub">painel local · somente leitura</span>
+    </div>
+    <nav aria-label="Páginas">
+      <a href="/" {% if pagina == 'lista' %}aria-current="page"{% endif %}>Vagas</a>
+      <a href="/gasto" {% if pagina == 'gasto' %}aria-current="page"{% endif %}>Gasto</a>
+    </nav>
+    <dl class="resumo" aria-label="Resumo">
+      <div><dt>Novas</dt><dd>{{ cab.contagem.nova }}</dd></div>
+      <div><dt>Aprovadas</dt><dd class="ok">{{ cab.contagem.aprovada }}</dd></div>
+      <div><dt>Abaixo do corte</dt><dd>{{ cab.contagem.abaixo_do_corte }}</dd></div>
+      <div><dt>Bloqueadas</dt><dd>{{ cab.contagem.bloqueada }}</dd></div>
+      <div><dt>Preparadas</dt><dd class="ok">{{ cab.contagem.preparada }}</dd></div>
+      <div><dt>Em candidatura</dt><dd>{{ cab.contagem.em_candidatura }}</dd></div>
+      <div><dt>Enviadas</dt><dd class="ok">{{ cab.contagem.enviada }}</dd></div>
+      <div><dt>Desistiu</dt><dd>{{ cab.contagem.desistiu }}</dd></div>
+      <div><dt>Gasto no mês</dt>
+        <dd class="{% if cab.gasto.teto_atingido %}erro{% elif cab.gasto.perto_do_teto %}aviso{% endif %}">
+          {{ cab.gasto.gasto_usd|usd }} <span class="sub">/ {{ cab.gasto.teto_usd|usd }}</span>
+        </dd>
+      </div>
+    </dl>
+  </header>
+  {% if cab.gasto.teto_atingido %}
+  <p class="faixa erro" role="alert">Teto mensal atingido: {{ cab.gasto.gasto_usd|usd }} de {{ cab.gasto.teto_usd|usd }}. O bot não fará novas avaliações este mês.</p>
+  {% elif cab.gasto.perto_do_teto %}
+  <p class="faixa aviso" role="status">Atenção: {{ '%.0f'|format(cab.gasto.percentual) }}% do teto mensal já foi usado ({{ cab.gasto.gasto_usd|usd }} de {{ cab.gasto.teto_usd|usd }}).</p>
+  {% endif %}
+  <main id="conteudo">
+    {% block conteudo %}{% endblock %}
+  </main>
+  <footer class="rodape">Dados de vagas vêm da internet e são exibidos como texto. Nenhuma ação deste painel grava no banco ou chama a API.</footer>
+</body>
+</html>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titulo %}Vagas{% endblock %}
+{% block conteudo %}
+<h1>Vagas <span class="sub">({{ vagas|length }} de {{ cab.total }})</span></h1>
+
+<form method="get" action="/" class="filtros" aria-label="Filtros">
+  <label>Status
+    <select name="status">
+      <option value="" {% if not filtro_status %}selected{% endif %}>todos</option>
+      {% for s in status_opcoes %}
+      <option value="{{ s }}" {% if filtro_status == s %}selected{% endif %}>{{ cab.rotulos[s] }} ({{ cab.contagem[s] }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Nota mínima
+    <input type="number" name="nota_min" min="0" max="10" step="1" value="{{ nota_min }}" inputmode="numeric">
+  </label>
+  <label>Ordenar por
+    <select name="ordem">
+      <option value="nota" {% if ordem == 'nota' %}selected{% endif %}>nota</option>
+      <option value="data" {% if ordem == 'data' %}selected{% endif %}>data</option>
+    </select>
+  </label>
+  <button type="submit">Aplicar</button>
+  <a href="/" class="botao-leve">Limpar</a>
+</form>
+
+{% if not vagas %}
+<p class="vazio">Nenhuma vaga com esses filtros.</p>
+{% else %}
+<div class="tabela-rolagem">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Empresa</th>
+      <th scope="col">Cargo</th>
+      <th scope="col">Fonte</th>
+      <th scope="col" class="num">Nota</th>
+      <th scope="col">Status</th>
+      <th scope="col">Motivo</th>
+      <th scope="col">Link</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in vagas %}
+    <tr>
+      <td>{{ v.empresa }}</td>
+      <td><a href="/vaga/{{ v.chave|urlencode }}">{{ v.cargo }}</a></td>
+      <td>{{ v.fonte }}</td>
+      <td class="num">{% if v.nota is none %}–{% else %}{{ '%.0f'|format(v.nota) }}{% endif %}</td>
+      <td><span class="status status-{{ v.status }}">{{ v.status_rotulo }}</span></td>
+      <td class="motivo">{{ v.motivo }}</td>
+      <td>
+        {% if v.url_segura %}
+        <a href="{{ v.url_segura }}" target="_blank" rel="noopener noreferrer">abrir</a>
+        {% else %}
+        <span class="sub" title="URL rejeitada por não ser http(s)">link inválido</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

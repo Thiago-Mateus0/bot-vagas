@@ -1,0 +1,190 @@
+# Perfil estruturado de Thiago Mateus.
+# Fonte: curriculo-thiago-mateus (3).pdf (PT) e curriculo-thiago-mateus-en.pdf (EN).
+# Este arquivo e a UNICA fonte de verdade para o curriculo gerado. Nada aqui foi inventado;
+# todo texto foi copiado dos PDFs. Dados pessoais ficam apenas neste arquivo local.
+
+nome: THIAGO MATEUS
+titulo:
+  pt: Desenvolvedor Júnior
+  en: Junior Developer
+
+contato:
+  cidade:
+    pt: Maceió, AL
+    en: Maceió, AL
+  email: exemplo@exemplo.com
+  telefone: (00) 00000-0000
+  linkedin: linkedin.com/in/thiago-mateus-91180a3a8
+  github: github.com/Thiago-Mateus0
+
+resumo:
+  pt: >-
+    Desenvolvedor júnior e estudante de Ciência da Computação que une comunicação clara,
+    liderança técnica e aprendizado rápido a experiência real em produção: construo um sistema
+    de gestão completo, de integrações por webhook a regras de negócio em PostgreSQL. Trabalho
+    com TypeScript, Python e SQL, escrevo testes e documentação, uso agentes de código
+    (Claude Code e Codex) no dia a dia e quero me aprofundar em inteligência artificial.
+    Busco estágio ou a primeira vaga como desenvolvedor júnior.
+  en: >-
+    Junior developer and Computer Science student who combines clear communication, technical
+    leadership and fast learning with real production experience: I build a complete management
+    system, from webhook integrations to business rules in PostgreSQL. I work with TypeScript,
+    Python and SQL, write tests and documentation, use coding agents (Claude Code and Codex)
+    daily and want to go deeper into artificial intelligence. Looking for an internship or my
+    first junior developer role.
+
+habilidades_interpessoais:
+  - id: lideranca
+    titulo: {pt: Liderança, en: Leadership}
+    texto:
+      pt: "lidero tecnicamente o sistema do estúdio: defino a arquitetura, priorizo o que entra junto com o gestor e conduzo as revisões antes de cada entrega."
+      en: "I technically lead the studio's system: I define the architecture, set priorities together with the manager and run reviews before each delivery."
+  - id: comunicacao
+    titulo: {pt: Comunicação, en: Communication}
+    texto:
+      pt: "explico decisões técnicas a quem não é técnico: escrevo a documentação em linguagem simples para o gestor e alinho requisitos com ele e com a equipe do balcão."
+      en: "I explain technical decisions to non-technical people: I write documentation in plain language and align requirements with the manager and the front-desk team."
+  - id: aprendizado_rapido
+    titulo: {pt: Aprendizado rápido, en: Fast learning}
+    texto:
+      pt: "comecei a programar em 2026 e, no mesmo ano, coloquei em produção um sistema com banco de dados, integração externa e IA."
+      en: "I started programming in 2026 and, in the same year, put into production a system with a database, an external integration and AI."
+  - id: vontade_aprender
+    titulo: {pt: Vontade de aprender, en: Eagerness to learn}
+    texto:
+      pt: "aprendo na prática e registro o porquê: cada decisão vira um ADR, inclusive os erros que viraram regra."
+      en: "I learn by doing and record the why: every decision becomes an ADR, including the mistakes that turned into rules."
+  - id: parceria_autonomia
+    titulo: {pt: Trabalho em parceria e autonomia, en: Teamwork and autonomy}
+    texto:
+      pt: "BurguerScore em dupla e a plataforma de estudos com um sócio; no dia a dia, trabalho com escopo fechado por issue e PR."
+      en: "BurguerScore as a pair and the study platform with a business partner; day to day, I work with scope closed by issue and PR."
+
+educacao:
+  - id: afya_cc
+    curso:
+      pt: BACHARELADO EM CIÊNCIA DA COMPUTAÇÃO
+      en: B.Sc. IN COMPUTER SCIENCE
+    instituicao: Afya UNIMA
+    local:
+      pt: Maceió, AL
+      en: Maceió, Brazil
+    periodo:
+      pt: 2026 – atual
+      en: 2026 – present
+    bullets:
+      - id: edu_periodo
+        texto:
+          pt: Cursando o 2º período.
+          en: Currently in the 2nd semester.
+
+competencias:
+  tecnologias:
+    - {id: typescript, nome: {pt: TypeScript, en: TypeScript}}
+    - {id: javascript, nome: {pt: JavaScript, en: JavaScript}}
+    - {id: python, nome: {pt: Python, en: Python}}
+    - {id: sql, nome: {pt: SQL, en: SQL}}
+    - {id: c, nome: {pt: C, en: C}}
+    - {id: nodejs, nome: {pt: Node.js, en: Node.js}}
+    - {id: react, nome: {pt: React, en: React}}
+    - {id: nextjs, nome: {pt: Next.js, en: Next.js}}
+    - {id: vite, nome: {pt: Vite, en: Vite}}
+    - {id: tailwind, nome: {pt: Tailwind CSS, en: Tailwind CSS}}
+    - {id: fastapi, nome: {pt: FastAPI, en: FastAPI}}
+    - {id: rest, nome: {pt: APIs REST, en: REST APIs}}
+    - {id: webhooks, nome: {pt: webhooks, en: webhooks}}
+    - {id: anthropic_api, nome: {pt: API da Anthropic (Claude), en: Anthropic API (Claude)}}
+    - {id: postgresql, nome: {pt: PostgreSQL, en: PostgreSQL}}
+    - {id: plpgsql, nome: {pt: PL/pgSQL, en: PL/pgSQL}}
+    - {id: sqlite, nome: {pt: SQLite, en: SQLite}}
+    - {id: git, nome: {pt: Git, en: Git}}
+    - {id: github, nome: {pt: GitHub, en: GitHub}}
+    - {id: github_actions, nome: {pt: GitHub Actions (CI), en: GitHub Actions (CI)}}
+    - {id: linux, nome: {pt: Linux, en: Linux}}
+    - {id: docker, nome: {pt: Docker, en: Docker}}
+    - {id: testes, nome: {pt: "testes automatizados (pgTAP, pytest, Vitest)", en: "automated testing (pgTAP, pytest, Vitest)"}}
+    - {id: adrs, nome: {pt: documentação técnica (ADRs), en: technical documentation (ADRs)}}
+    - {id: notion, nome: {pt: Notion, en: Notion}}
+    - {id: trello, nome: {pt: Trello, en: Trello}}
+    - {id: claude_code, nome: {pt: Claude Code, en: Claude Code}}
+    - {id: codex, nome: {pt: Codex, en: Codex}}
+  idiomas:
+    - id: portugues
+      nome: {pt: Português, en: Portuguese}
+      nivel: {pt: nativo, en: native}
+    - id: ingles
+      nome: {pt: Inglês, en: English}
+      nivel: {pt: avançado, en: advanced}
+
+experiencia:
+  - id: lifetrailer
+    empresa: LIFETRAILER STUDIO
+    cargo:
+      pt: Desenvolvedor In-House
+      en: In-House Developer
+    local:
+      pt: Maceió, AL
+      en: Maceió, Brazil
+    periodo:
+      pt: 07/2026 – atual
+      en: 07/2026 – present
+    bullets:
+      - id: exp_sistema
+        texto:
+          pt: "Desenvolvo e mantenho, em produção, um sistema de gestão para quiosques em tablet com 8 módulos, em React, TypeScript, Node.js e PostgreSQL gerenciado na DigitalOcean. Versão de portfólio: github.com/Thiago-Mateus0/lifetrailer-studio."
+          en: "I develop and maintain, in production, a tablet-kiosk management system with 8 modules, in React, TypeScript, Node.js and PostgreSQL managed on DigitalOcean. Portfolio version: github.com/Thiago-Mateus0/lifetrailer-studio."
+      - id: exp_ia
+        texto:
+          pt: "Integrei IA ao sistema com a API da Anthropic: um assistente de ajuda (Merida) que responde dúvidas e prepara rascunhos para a pessoa confirmar, com teto de gasto por dia e sem permissão de gravar sozinho."
+          en: "I integrated AI into the system with the Anthropic API: a help assistant (Merida) that answers questions and prepares drafts for the person to confirm, with a daily spending cap and no permission to write on its own."
+      - id: exp_altegio
+        texto:
+          pt: "Implementei a integração com a plataforma Altegio por webhook: recepção autenticada, idempotência e registro bruto dos eventos."
+          en: "I implemented the Altegio platform integration via webhook: authenticated reception, idempotency and raw event logging."
+      - id: exp_plpgsql
+        texto:
+          pt: "Criei regras de negócio em PL/pgSQL, incluindo uma máquina de estados para as comandas, com testes automatizados no banco (pgTAP)."
+          en: "I built business rules in PL/pgSQL, including a state machine for orders, with automated database tests (pgTAP)."
+      - id: exp_auditoria
+        texto:
+          pt: "Garanti auditoria append-only no banco (triggers, RLS e revogação de permissões de exclusão), com hash encadeado e verificação de integridade."
+          en: "I ensured append-only auditing in the database (triggers, RLS and revoked delete permissions), with a hash chain and integrity verification."
+      - id: exp_ci
+        texto:
+          pt: "Configurei CI no GitHub Actions que recria o banco do zero e roda toda a suíte de testes a cada pull request."
+          en: "I set up CI on GitHub Actions that rebuilds the database from scratch and runs the full test suite on every pull request."
+      - id: exp_adrs
+        texto:
+          pt: "Documento decisões de arquitetura (ADRs) e conduzo revisões e análise de riscos antes da implementação."
+          en: "I document architecture decisions (ADRs) and run reviews and risk analysis before implementation."
+
+projetos:
+  - id: arkhe_finance
+    nome: Arkhé Finance
+    descricao:
+      pt: "app de finanças pessoais em Python (FastAPI, SQLite) e React/TypeScript que importa o CSV do Nubank e separa gasto real de dinheiro em trânsito; 25 ADRs, testes automatizados e CI."
+      en: "personal finance app in Python (FastAPI, SQLite) and React/TypeScript that imports Nubank CSVs and separates real spending from money in transit; 25 ADRs, automated tests and CI."
+  - id: extrator_enem
+    nome: {pt: Extrator ENEM, en: ENEM Extractor}
+    descricao:
+      pt: "extrai questões de provas do ENEM em PDF para JSON (Python, PyMuPDF), com alertas de conferência, execução em sandbox, testes e CI; feito para a plataforma de estudos que desenvolvo com um sócio."
+      en: "extracts ENEM exam questions from PDF to JSON (Python, PyMuPDF), with review warnings, sandboxed execution, tests and CI; built for the study platform I'm developing with a partner."
+  - id: burguerscore
+    nome: BurguerScore
+    descricao:
+      pt: "aplicação web em Next.js e TypeScript, publicada na Vercel, desenvolvida em dupla."
+      en: "web app in Next.js and TypeScript, deployed on Vercel, built as a pair."
+  - id: study_track
+    nome: Study Track
+    descricao:
+      pt: "aplicação de linha de comando em Python com persistência em JSON (meu primeiro projeto)."
+      en: "Python command-line app with JSON persistence (my first project)."
+
+secoes:
+  sobre: {pt: SOBRE MIM, en: SUMMARY}
+  interpessoais: {pt: HABILIDADES INTERPESSOAIS, en: SOFT SKILLS}
+  educacao: {pt: EDUCAÇÃO, en: EDUCATION}
+  competencias: {pt: COMPETÊNCIAS TÉCNICAS, en: TECHNICAL SKILLS}
+  experiencia: {pt: EXPERIÊNCIA PROFISSIONAL, en: PROFESSIONAL EXPERIENCE}
+  projetos: {pt: PROJETOS, en: PROJECTS}
+  idiomas: {pt: Idiomas, en: Languages}

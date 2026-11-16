@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block titulo %}{{ v.cargo }} — {{ v.empresa }}{% endblock %}
+{% block conteudo %}
+<p><a href="/">← voltar à lista</a></p>
+<article class="detalhe">
+  <h1>{{ v.cargo }}</h1>
+  <p class="sub">{{ v.empresa }} · {{ v.fonte }}{% if v.localizacao %} · {{ v.localizacao }}{% endif %}
+    {% if v.remoto == 1 %} · remoto{% elif v.remoto == 0 %} · não remoto{% endif %}</p>
+
+  <dl class="ficha">
+    <div><dt>Status</dt><dd><span class="status status-{{ v.status }}">{{ v.status_rotulo }}</span></dd></div>
+    <div><dt>Nota</dt><dd>{% if v.nota is none %}–{% else %}{{ '%.0f'|format(v.nota) }} / 10{% endif %}</dd></div>
+    <div><dt>Data da vaga</dt><dd>{{ v.data_vaga|data }}</dd></div>
+    <div><dt>Link</dt><dd>
+      {% if v.url_segura %}<a href="{{ v.url_segura }}" target="_blank" rel="noopener noreferrer">{{ v.url_segura }}</a>
+      {% else %}<span class="sub">URL rejeitada por não ser http(s): </span><code>{{ v.url }}</code>{% endif %}
+    </dd></div>
+  </dl>
+
+  {% if v.motivo %}
+  <section>
+    <h2>Motivo</h2>
+    <p>{{ v.motivo }}</p>
+  </section>
+  {% endif %}
+
+  {% if v.preparacao %}
+  <section>
+    <h2>Candidatura preparada</h2>
+    <p class="sub">Nada foi enviado. Os caminhos abaixo são texto, não links: abra os arquivos no seu computador.</p>
+    <dl class="ficha">
+      <div><dt>Currículo (PDF)</dt><dd><code>{{ v.preparacao.pdf }}</code> <span class="sub">({{ v.preparacao.plano }}, {{ v.preparacao.idioma }})</span></dd></div>
+      <div><dt>Pacote (.md)</dt><dd><code>{{ v.preparacao.pacote }}</code></dd></div>
+      <div><dt>Filtro diria</dt><dd>{{ v.preparacao.filtro_diria }}</dd></div>
+      <div><dt>Modelo</dt><dd>{% if v.preparacao.real %}usado (--real){% else %}não usado{% endif %}</dd></div>
+    </dl>
+    {% if v.preparacao.avisos %}
+    <ul>{% for a in v.preparacao.avisos %}<li>{{ a }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if v.assistencia %}
+  <section>
+    <h2>Assistência do copiloto (candidatar)</h2>
+    <p class="sub">O bot não clicou nem enviou nada. Abaixo só os nomes dos campos; nenhum valor pessoal é gravado.</p>
+    <dl class="ficha">
+      <div><dt>Quando</dt><dd>{{ v.assistencia.quando|data }}</dd></div>
+      <div><dt>Varreduras</dt><dd>{{ v.assistencia.passos }}</dd></div>
+      <div><dt>PDF anexado</dt><dd>{% if v.assistencia.pdf_anexado %}sim{% else %}não{% endif %}</dd></div>
+    </dl>
+    <h3>Preenchidos pelo bot (confira)</h3>
+    {% if v.assistencia.preenchidos %}<ul>{% for a in v.assistencia.preenchidos %}<li>{{ a }}</li>{% endfor %}</ul>{% else %}<p class="sub">Nenhum.</p>{% endif %}
+    <h3>Deixados para você</h3>
+    {% if v.assistencia.pendentes %}<ul>{% for a in v.assistencia.pendentes %}<li>{{ a }}</li>{% endfor %}</ul>{% else %}<p class="sub">Nenhum.</p>{% endif %}
+    {% if v.assistencia.avisos %}<ul>{% for a in v.assistencia.avisos %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+  </section>
+  {% endif %}
+
+  <section class="duas-colunas">
+    <div>
+      <h2>Pontos de match</h2>
+      {% if v.pontos_de_match %}<ul>{% for p in v.pontos_de_match %}<li>{{ p }}</li>{% endfor %}</ul>
+      {% else %}<p class="sub">Sem avaliação do modelo ainda.</p>{% endif %}
+    </div>
+    <div>
+      <h2>Requisitos que faltam</h2>
+      {% if v.requisitos_que_faltam %}<ul>{% for p in v.requisitos_que_faltam %}<li>{{ p }}</li>{% endfor %}</ul>
+      {% else %}<p class="sub">Nenhum registrado.</p>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Histórico de status</h2>
+    <ol class="historico">
+      {% for h in historico %}
+      <li><span class="quando">{{ h.quando|data if h.quando else '' }}</span> <strong>{{ h.evento }}</strong>{% if h.detalhe %} — {{ h.detalhe }}{% endif %}</li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section>
+    <h2>Descrição</h2>
+    <pre class="descricao">{{ v.descricao }}</pre>
+  </section>
+</article>
+{% endblock %}

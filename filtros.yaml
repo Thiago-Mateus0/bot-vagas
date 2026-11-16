@@ -1,0 +1,84 @@
+# Filtro por palavras-chave (fase A) e corte da nota do modelo (fase B).
+# Comparacao sempre em minusculas e sem acento, por palavra inteira (nao casa dentro de outra palavra).
+# EDITE conforme as vagas reais que aparecerem (REQUISITOS.md, secao 17).
+
+# Nota minima (0-10) para a vaga ser "aprovada" na fase B.
+nota_de_corte: 7
+
+# Localizacao (regra, fase A): a vaga passa se for REMOTA ou se for presencial/hibrida EM MACEIO/AL.
+# (O antigo `remoto.obrigatorio` foi removido: remoto nao e mais obrigatorio, e derivado desta regra.)
+remoto:
+  # termos que indicam vaga remota. Valem no TITULO ou na LOCALIZACAO (ou a fonte diz remoto).
+  # Na DESCRICAO so valem se o campo localizacao esta vazio, indica Maceio/AL ou uma regiao ampla
+  # (ver localizacao_aceita.regioes_amplas). Localizacao "Austin, TX" + "remote" so na descricao
+  # NAO e remota (motivo: "remoto so na descricao").
+  termos: [remoto, remota, remote, "home office", "home-office", anywhere, "trabalho remoto", "100% remoto", "fully remote", "work from home", wfh]
+  # Heuristica: remoto com restricao geografica clara FORA do Brasil bloqueia (motivo registrado).
+  # Alem desta lista, o codigo casa regiao fora do Brasil ANTES ou DEPOIS de remoto, separada por
+  # | - – ( ) / : , -> "remote - US", "remote (USA)", "Remote | Central US", "Central US | Remote",
+  # "Remoto - EUA", "remoto: Portugal". "Brazil", "LATAM", "Americas", "worldwide", "global" NAO bloqueiam.
+  restricoes_fora_do_brasil: ["us only", "usa only", "us-only", "united states only", "us based", "us-based", "based in the us", "located in the us", "uk only", "eu only", "europe only", "canada only", "us citizens", "us work authorization", "authorized to work in the us", "authorized to work in the united states"]
+
+localizacao_aceita:
+  # Estes termos deixaram de ser bloqueio global: no TITULO ou LOCALIZACAO marcam a vaga como
+  # presencial/hibrida, que entao so passa se a localizacao indicar Maceio/AL.
+  # Na descricao sao ignorados ("nao e presencial" numa vaga remota nao bloqueia).
+  termos_presencial: [presencial, "on-site", onsite, "on site", hibrido, hibrida, hybrid]
+  # cidade: casa no titulo, localizacao ou (apoio fraco) descricao; palavra inteira ("maceiozinho" nao casa)
+  cidades_presencial: [maceio]
+  # estado: casa SO no campo localizacao ("al" solto na descricao e ambiguo)
+  estados_siglas: [al]
+  estados_nomes: [alagoas]
+  # regioes amplas: se o campo localizacao contem uma destas, "remote" na descricao ainda vale
+  # (a localizacao nao aponta para uma cidade especifica fora de Maceio)
+  regioes_amplas: [brasil, brazil, br, latam, "latin america", "america latina", americas, worldwide, global, anywhere, remoto, remota, remote]
+
+nivel:
+  # POR ORA so ESTAGIO e TRAINEE sao aceitos (Thiago esta no 2o semestre). Vagas JUNIOR ficam
+  # excluidas por enquanto; graduate/new grad/recem-formado/early career tambem (exigem curso concluido).
+  # Para reativar junior: basta mover os termos (junior, jr, "entry level"...) de
+  # `bloqueiam_no_titulo` para `aceitos`.
+  # Nivel e procurado SOMENTE NO TITULO (nao na descricao), palavra inteira: "intern" nao casa em
+  # "internal"/"international"; "estagiário" com acento casa (comparacao sem acento).
+  aceitos: [estagio, estagiario, estagiaria, intern, internship, trainee]
+  # Se qualquer um destes aparecer no TITULO a vaga e bloqueada (nivel errado), EXCETO se o titulo
+  # tambem tem um termo de `aceitos` ("Estagio Dev Jr" aceita: estagio e o que se quer).
+  bloqueiam_no_titulo: [senior, sr, pleno, "mid-level", mid, lead, staff, principal, gerente, manager, head, diretor, director, especialista, specialist, arquiteto, architect,
+    junior, jr, "jr.", "entry level", "entry-level", graduate, "new grad", "early career", "recem formado", "recem-formado"]
+
+# Qualquer um destes em qualquer campo bloqueia a vaga.
+bloqueios:
+  - machine learning
+  - ml engineer
+  - data scientist
+  - cientista de dados
+  - estatistica
+  - pytorch
+  - tensorflow
+  - scikit-learn
+  - sklearn
+  - pandas
+  - vendas
+  - telemarketing
+
+# Termos que aumentam a pontuacao de palavras-chave (informativo; a nota final e do modelo).
+pontuam:
+  - llm
+  - api de ia
+  - ai api
+  - prompt
+  - integracao
+  - integration
+  - automacao
+  - automation
+  - agentes
+  - agents
+  - backend
+  - back-end
+  - postgresql
+  - postgres
+  - fastapi
+  - node.js
+  - nodejs
+  - typescript
+  - python

@@ -1,0 +1,76 @@
+# Fontes de vagas (Etapa 2). Lista pesquisada em 2026-11-11: cada token abaixo foi
+# testado na API publica e devolveu um quadro de vagas existente (numero de vagas no dia).
+# O filtro (filtros.yaml) descarta o que nao for remoto ou presencial/hibrido em Maceio,
+# entao quadros com poucas vagas elegiveis custam so uma requisicao.
+# Como descobrir um token novo:
+#   - Greenhouse: URL da pagina de vagas  https://boards.greenhouse.io/<token>  ou  https://job-boards.greenhouse.io/<token>
+#   - Lever: https://jobs.lever.co/<empresa>
+# Nenhuma dessas APIs exige login ou chave.
+
+greenhouse:
+  # --- Brasil ---
+  - token: quintoandar       # 100 vagas
+  - token: vtex              # 33
+  - token: gympass           # 87 (Wellhub)
+  - token: ebanx             # 36
+  - token: stone             # 347
+  - token: inter             # 118 (Banco Inter; varios estagios, em BH)
+  - token: wildlifestudios   # 16 (varios estagios, em SP)
+  - token: jusbrasil         # 20
+  - token: rdstation         # 5
+  - token: thoughtworks      # 46 (programa Graduate Developer)
+  # --- Empresas remote-first / que aceitam contratado no exterior ---
+  - token: gitlab            # 259 (100% remoto; poucas vagas de entrada)
+  - token: canonical         # 316 (muitas vagas "Home based - Worldwide/Americas", inclui graduate/entry-level)
+  - token: grafanalabs       # 144
+  - token: elastic           # 420 (distribuida)
+  - token: cockroachlabs     # 12
+  - token: remote            # 2
+  # Grandes com estagios, mas quase todos presenciais nos EUA/Europa (o filtro vai descartar quase tudo):
+  # - token: stripe
+  # - token: datadog
+  # - token: mongodb
+  # - token: coinbase
+  # - token: duolingo
+  # - token: figma
+  # - token: vercel
+  # - token: airbnb
+
+lever:
+  - empresa: kavak           # 5
+  - empresa: tekton          # 9
+  - empresa: spotify         # 85
+  - empresa: binance         # 4
+  - empresa: palantir        # 303 (muitos estagios, quase todos presenciais nos EUA/Europa)
+
+# Gupy: le a PAGINA PUBLICA de busca do portal (https://portal.gupy.io/job-search/term=<termo>),
+# a mesma que um navegador carrega, sem login e sem rota interna. A API publica antiga foi
+# desligada em 09/11/2026. RISCO: a estrutura da pagina (JSON em <script id="__NEXT_DATA__">)
+# NAO e documentada e pode mudar sem aviso; quando isso acontecer o bot NAO tenta contornar:
+# registra "Gupy: formato da pagina mudou ou acesso bloqueado" e `buscar` sai com codigo 1.
+# HTTP 429/403 ou pagina de captcha param TODAS as requisicoes a Gupy naquela execucao.
+# A busca e literal pelo termo no titulo da vaga (ex.: "estagio" ~100, "estagio ti" 18,
+# "estagio backend" 0 em 2026-11-13), 12 vagas por pagina. A maioria das vagas de Maceio esta
+# na Gupy (alem de BNE, Sine e CIEE, que o bot nao le).
+gupy:
+  max_paginas_por_termo: 5   # 12 vagas por pagina -> ate 60 por termo
+  max_requisicoes: 40        # teto total de requisicoes a Gupy por execucao
+  pausa_segundos: 2          # o codigo impoe minimo de 2 s
+  termos:
+    - estagio ti
+    - estagio desenvolvedor
+    - estagio desenvolvimento de software
+    - estagio software
+    - estagio programacao
+    - estagio dados
+    - estagio sistemas
+    - estagio tecnologia
+    - estagio backend
+    - estagio python
+    - estagio inteligencia artificial
+    - trainee tecnologia
+    - trainee ti
+    - estagio remoto
+    - estagio home office
+    - estagio maceio
+    - estagiario ti

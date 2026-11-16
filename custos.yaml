@@ -1,0 +1,10 @@
+# Contador de gasto (REQUISITOS.md, secao 8). Precos podem mudar: RECONFIRMAR em
+# https://www.anthropic.com/pricing antes de ligar o modo --real.
+modelo: claude-haiku-5-5
+precos_usd_por_milhao:
+  entrada: 0.10
+  saida: 0.50
+  # leitura de cache custa menos que entrada; escrita custa mais. Valores padrao do Haiku 5.5.
+  cache_leitura: 0.01
+  cache_escrita: 0.125
+teto_mensal_usd: 3.00
