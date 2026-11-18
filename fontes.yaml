@@ -74,3 +74,14 @@ gupy:
     - estagio home office
     - estagio maceio
     - estagiario ti
+
+# velrino/jobs (https://github.com/velrino/jobs): quadro de vagas de tecnologia em GitHub Issues, já classificado
+# por etiquetas (level:intern, region:brazil, work:remote...). Lido pela API pública do GitHub, sem login.
+# Vagas da Gupy daqui viram o mesmo endereço da busca da Gupy (não duplicam e entram no modo automático);
+# as de outros sites (InHire, Sólides, Greenhouse...) ficam no painel para você se candidatar à mão.
+# RISCO: repositório de um mantenedor só; se sumir ou mudar o formato, a fonte só deixa de trazer vagas.
+velrino:
+  ativo: true
+  niveis: [intern]        # etiquetas level:<nivel>; ex.: [intern, entry-level]
+  regioes: [brazil]       # etiquetas region:<regiao>; a vaga precisa ter as duas
+  max_paginas: 3          # 100 vagas por página

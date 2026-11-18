@@ -10,13 +10,13 @@ import sys
 from datetime import datetime
 from typing import Any
 
+from . import parada
 from .avaliador import ErroAvaliacao, avaliar_vaga
 from .banco import STATUS, Banco
 from .filtro import Filtros, avaliar_palavras_chave
 from .fontes import Fonte, Vaga
 from .fontes.http import ClienteHTTP, ErroHTTP
 from .gasto import Contador, TetoAtingido
-from .parada import exigir_nao_parado
 from .perfil import Perfil
 from .plano_llm import ClienteMensagens
 
@@ -45,12 +45,11 @@ def vaga_de_linha(row) -> Vaga:
 
 
 def buscar(fontes: list[Fonte], http: ClienteHTTP, banco: Banco, log=print) -> dict[str, int]:
-    """Entre uma fonte e outra, respeita o arquivo PARAR (ParadaSolicitada); o que já foi salvo fica salvo.
-    `alarmes` conta avisos de mudança de formato/bloqueio (hoje só a Gupy os emite, em
+    """`alarmes` conta avisos de mudança de formato/bloqueio (hoje só a Gupy os emite, em
     `fonte.alarmes`); a CLI devolve código de saída 1 quando há algum."""
     total = {"baixadas": 0, "novas": 0, "fontes_com_erro": 0, "alarmes": 0}
     for fonte in fontes:
-        exigir_nao_parado()  # botão PARAR: levanta ParadaSolicitada
+        parada.verificar()  # botão PARAR: interrompe entre uma fonte e outra
         rotulo = f"{fonte.nome}:{getattr(fonte, 'token', None) or getattr(fonte, 'empresa', None) or ''}"
         try:
             vagas = fonte.buscar(http)
@@ -76,7 +75,7 @@ def filtrar(banco: Banco, filtros: Filtros, log=print) -> dict[str, int]:
     Vagas já filtradas não são refiltradas."""
     total = {"passaram": 0, "bloqueadas": 0}
     for row in banco.listar("nova"):
-        exigir_nao_parado()  # botão PARAR: levanta ParadaSolicitada
+        parada.verificar()
         detalhes = json.loads(row["detalhes"]) if row["detalhes"] else {}
         if detalhes.get("filtro") == "passou":
             continue  # já filtrada antes
@@ -103,6 +102,7 @@ def refiltrar(banco: Banco, filtros: Filtros, log=print) -> dict[str, int]:
     Não faz chamadas ao modelo nem à rede."""
     total = {"bloqueada_para_nova": 0, "nova_para_bloqueada": 0, "iguais": 0, "ignoradas_com_nota": 0}
     for row in banco.listar(STATUS):
+        parada.verificar()
         if row["nota"] is not None or row["status"] not in ("nova", "bloqueada"):
             total["ignoradas_com_nota"] += 1
             continue
@@ -147,7 +147,7 @@ def avaliar(perfil: Perfil, banco: Banco, filtros: Filtros, client: ClienteMensa
     if limite is not None:
         pendentes = pendentes[:limite]
     for row in pendentes:
-        exigir_nao_parado()  # botão PARAR: levanta ParadaSolicitada
+        parada.verificar()  # antes de cada chamada paga
         try:
             contador.exigir_orcamento()
         except TetoAtingido as e:

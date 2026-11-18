@@ -11,6 +11,7 @@ from . import Fonte
 from .greenhouse import Greenhouse
 from .gupy import Gupy
 from .lever import Lever
+from .velrino import Velrino
 
 FONTES_PADRAO = RAIZ_PROJETO / "fontes.yaml"
 
@@ -40,4 +41,11 @@ def carregar_fontes(caminho: Path | str = FONTES_PADRAO) -> list[Fonte]:
         termos = [t for t in termos if t.strip()]
         if termos:
             fontes.append(Gupy(termos))
+    velrino = dados.get("velrino")
+    if isinstance(velrino, dict) and velrino.get("ativo", True):
+        fontes.append(Velrino(
+            niveis=[str(n) for n in (velrino.get("niveis") or ["intern"])],
+            regioes=[str(r) for r in (velrino.get("regioes") or ["brazil"])],
+            max_paginas=int(velrino.get("max_paginas", 3)),
+        ))
     return fontes

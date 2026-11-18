@@ -113,7 +113,7 @@ progress.barra.aviso::-webkit-progress-value, progress.barra.aviso::-moz-progres
 progress.barra.erro { accent-color: var(--erro); }
 progress.barra.erro::-webkit-progress-value, progress.barra.erro::-moz-progress-bar { background: var(--erro); }
 
-.parada { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: .5rem 1rem; }
-.parada form { margin: 0; }
-.parada button { font: inherit; padding: .35rem .9rem; border-radius: 6px; border: 1px solid currentColor; cursor: pointer; }
-.parada button.perigo { background: #b3261e; color: #fff; border-color: #b3261e; }
+/* botão PARAR (única ação que escreve algo: o arquivo PARAR) */
+.botao-parar { margin: 0; }
+.botao-parar button.parar { background: var(--erro); border-color: var(--erro); font-weight: 700; }
+.botao-parar button.retomar { background: transparent; color: var(--erro); border-color: var(--erro); font-weight: 700; }

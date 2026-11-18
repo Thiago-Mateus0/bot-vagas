@@ -10,7 +10,7 @@ cd "$(dirname "$0")/../.." || exit 0
 n=$(cat .claude/.bloqueios 2>/dev/null || echo 0)
 case "$n" in ''|*[!0-9]*) n=0 ;; esac
 [ "$n" -ge 40 ] && exit 0
-pend=$(awk '/^## Definição de pronto/{f=1;next} /^## /{f=0} f && /^- \[ \]/ && !/\[Thiago\]/' docs/desenvolvimento/HANDOFF.md)
+pend=$(awk '/^## Definição de pronto/{f=1;next} /^## /{f=0} f && /^- \[ \]/ && !/\[Thiago\]/' HANDOFF.md)
 if [ -z "$pend" ]; then rm -f .claude/NAO_PARAR .claude/.bloqueios; exit 0; fi
 echo $((n+1)) > .claude/.bloqueios
 PEND="$pend" python3 -I - <<'PY'
