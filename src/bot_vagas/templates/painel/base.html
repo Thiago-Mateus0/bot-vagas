@@ -11,7 +11,7 @@
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
   <header class="topo">
     <div class="marca">
-      <strong>bot-vagas</strong> <span class="sub">painel local · somente leitura</span>
+      <strong>bot-vagas</strong> <span class="sub">painel local · somente leitura (exceto o botão Parar)</span>
     </div>
     <nav aria-label="Páginas">
       <a href="/" {% if pagina == 'lista' %}aria-current="page"{% endif %}>Vagas</a>
@@ -33,6 +33,14 @@
       </div>
     </dl>
   </header>
+  <section class="parada" aria-label="Botão de parada">
+    {% if cab.parado %}
+    <p class="faixa erro" role="alert">PARADO: o arquivo PARAR existe. Nenhuma execução do bot começa nem continua.</p>
+    <form method="post" action="/retomar"><button type="submit">Retomar (apagar PARAR)</button></form>
+    {% else %}
+    <form method="post" action="/parar"><button type="submit" class="perigo">Parar tudo</button></form>
+    {% endif %}
+  </section>
   {% if cab.gasto.teto_atingido %}
   <p class="faixa erro" role="alert">Teto mensal atingido: {{ cab.gasto.gasto_usd|usd }} de {{ cab.gasto.teto_usd|usd }}. O bot não fará novas avaliações este mês.</p>
   {% elif cab.gasto.perto_do_teto %}
@@ -41,6 +49,6 @@
   <main id="conteudo">
     {% block conteudo %}{% endblock %}
   </main>
-  <footer class="rodape">Dados de vagas vêm da internet e são exibidos como texto. Nenhuma ação deste painel grava no banco ou chama a API.</footer>
+  <footer class="rodape">Dados de vagas vêm da internet e são exibidos como texto. Nenhuma ação deste painel grava no banco ou chama a API; o botão Parar só cria/apaga o arquivo PARAR.</footer>
 </body>
 </html>

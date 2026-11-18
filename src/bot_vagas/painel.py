@@ -8,6 +8,8 @@
   * links externos só são renderizados como <a> quando o esquema é http/https, sempre com
     rel="noopener noreferrer".
 - Nenhuma rota escreve no banco, chama a API da Anthropic ou faz rede.
+- Única escrita: o botão PARAR (POST /parar e /retomar) cria/apaga o arquivo PARAR. Esses POSTs exigem
+  header Origin de localhost (bloqueia CSRF de outro site aberto no navegador) e respondem com redirect 303.
 """
 
 from __future__ import annotations
@@ -19,13 +21,14 @@ from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .banco import BANCO_PADRAO, STATUS, Banco
 from .gasto import CUSTOS_PADRAO, Contador, carregar_custos
+from .parada import caminho_parar, parar_solicitado, retomar, solicitar_parada
 
 PASTA = Path(__file__).parent
 TEMPLATES = PASTA / "templates" / "painel"
@@ -73,6 +76,17 @@ def host_permitido(host: str | None) -> bool:
     else:
         h = h.split(":")[0]
     return h in HOSTS_PERMITIDOS
+
+
+def origem_permitida(origin: str | None) -> bool:
+    """POST só de páginas do próprio painel: Origin http(s)://localhost|127.0.0.1|[::1][:porta]."""
+    if not origin:
+        return False
+    try:
+        u = urlsplit(origin)
+    except ValueError:
+        return False
+    return u.scheme in ("http", "https") and host_permitido(u.netloc) and not u.path.strip("/")
 
 
 def _detalhes(row) -> dict[str, Any]:
@@ -247,6 +261,8 @@ def criar_app(caminho_banco: Path | str = BANCO_PADRAO, caminho_custos: Path | s
             "total": sum(contagem.values()),
             "gasto": resumo_gasto(banco, contador),
             "rotulos": ROTULOS_STATUS,
+            "parado": parar_solicitado(),
+            "arquivo_parar": str(caminho_parar()),
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -296,6 +312,22 @@ def criar_app(caminho_banco: Path | str = BANCO_PADRAO, caminho_custos: Path | s
             "pagina": "gasto", "g": cab["gasto"], "chamadas": chamadas, "cab": cab,
         })
 
+    def _post_local(request: Request) -> None:
+        if not origem_permitida(request.headers.get("origin")):
+            raise HTTPException(status_code=403, detail="origem não permitida")
+
+    @app.post("/parar")
+    def parar(request: Request):
+        _post_local(request)
+        solicitar_parada("botão do painel")
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/retomar")
+    def retomar_rota(request: Request):
+        _post_local(request)
+        retomar()
+        return RedirectResponse("/", status_code=303)
+
     return app
 
 
@@ -306,5 +338,5 @@ def servir(porta: int = 8765, caminho_banco: Path | str = BANCO_PADRAO,
 
     if host not in ("127.0.0.1", "localhost", "::1"):
         raise ValueError("o painel só pode escutar em loopback (127.0.0.1)")
-    print(f"painel em http://127.0.0.1:{porta}/  (somente leitura; Ctrl+C para parar)", flush=True)
+    print(f"painel em http://127.0.0.1:{porta}/  (somente leitura + botão PARAR; Ctrl+C para fechar)", flush=True)
     uvicorn.run(criar_app(caminho_banco, caminho_custos), host=host, port=porta, log_level="warning")

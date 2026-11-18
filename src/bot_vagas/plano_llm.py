@@ -1,7 +1,7 @@
 """Gera o plano de adaptação com a API da Anthropic (cliente injetável).
 
 Nesta etapa NENHUMA chamada real é feita: `gerar_plano` exige um `client` passado por
-parâmetro e os testes usam um cliente falso. Regras seguidas (REQUISITOS.md, seção 8 e
+parâmetro e os testes usam um cliente falso. Regras seguidas (docs/DECISOES.md, "Modelo e custo" e
 instruções da etapa): modelo exato `claude-haiku-5-5`, esforço baixo, sem temperature/top_p/
 top_k, sem prefill, saída estruturada via `output_config.format` com schema do pydantic,
 tratamento de stop_reason "refusal" e parse defensivo do JSON.

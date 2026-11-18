@@ -1,4 +1,4 @@
-"""Contador de gasto mínimo (REQUISITOS.md, seção 8).
+"""Contador de gasto mínimo (docs/DECISOES.md, "Modelo e custo").
 
 Lê preços e teto de custos.yaml, registra o `usage` de cada chamada no SQLite e bloqueia
 novas avaliações quando o gasto do mês atinge o teto.

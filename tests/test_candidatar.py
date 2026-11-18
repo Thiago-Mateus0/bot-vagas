@@ -168,7 +168,7 @@ def test_formata_datas_e_valores():
     assert formatar_para_campo("x", "2029-06", "date") is None  # não inventa o dia
     assert formatar_para_campo("x", "2029-06", "text", "dd/mm/aaaa") is None
     assert formatar_para_campo("x", "2029-06", "text", "Ano de formatura") == "2029"
-    assert formatar_para_campo("x", 2500, "text") == "2500"
+    assert formatar_para_campo("x", 1750, "text") == "1750"
     assert formatar_para_campo("x", None, "text") is None
     assert formatar_para_campo("x", True, "text") is None  # booleano em campo de texto: ambíguo
     assert formatar_para_campo("x", ["estagio", "clt"], "text") == "estagio, clt"
@@ -182,6 +182,9 @@ def test_escolhe_opcao_por_texto_sem_ambiguidade():
     assert escolher_opcao("Brasil", ["Argentina", "Brazil", "Portugal"]) == 1
     assert escolher_opcao("parda", ["Branca", "Preta", "Parda", "Amarela"]) == 2
     assert escolher_opcao("avançado", ["Básico", "Intermediário", "Avançado"]) == 2
+    # o valor exato vence o sinônimo ("fluente" também é sinônimo de avançado)
+    assert escolher_opcao("avançado", ["Básico", "Intermediário", "Avançado", "Fluente"]) == 2
+    assert escolher_opcao("avançado", ["Básico", "Intermediário", "Fluente"]) == 2  # sem o exato, o sinônimo serve
     assert escolher_opcao("2029-06", ["2028", "2029", "2030"]) is None  # formato de data: não casa
     assert escolher_opcao(2029, ["2028", "2029", "2030"]) == 1
     assert escolher_opcao(["estagio", "clt"], ["Estágio", "CLT", "PJ"]) == 0
@@ -197,7 +200,7 @@ def test_preenche_campos_reconhecidos_sem_clicar_nem_enviar(pagina, servidor, pd
     r = cp.passo(pagina)
 
     v = lambda sel: pagina.locator(sel).input_value()
-    assert v("#pretensao") == "2500"
+    assert v("#pretensao") == "1750"
     assert v("#inicio") == "imediata"
     assert v("#carga") == "conforme a vaga"
     assert v("#cidade") == "Maceió"
@@ -266,7 +269,7 @@ def test_campo_editado_pelo_usuario_nao_e_tocado(pagina, servidor, pdf):
     assert pagina.locator("#cidade").input_value() == ""
     assert pagina.locator("#genero").input_value() == "x"
     assert pagina.locator("#cidade").get_attribute("data-bot-vagas-estado") in (None, "")
-    assert pagina.locator("#pretensao").input_value() == "2500"  # os outros seguem normalmente
+    assert pagina.locator("#pretensao").input_value() == "1750"  # os outros seguem normalmente
 
 
 def test_pagina_de_login_nao_e_tocada_e_avisa(pagina, servidor, pdf):
@@ -305,7 +308,7 @@ def test_resumo_e_registro_sem_valores_pessoais(pagina, servidor, pdf):
     cp.passo(pagina)
     resumo = cp.resumo()
     registro = json.dumps(cp.registro.para_json(), ensure_ascii=False)
-    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["2500", "31/01/1999", "06/2029"]:
+    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["1750", "31/01/1999", "06/2029"]:
         assert s not in resumo, s
         assert s not in registro, s
     assert "Cidade" in resumo and "Por que" in resumo and "consentimento" in resumo
@@ -379,7 +382,7 @@ def test_candidatar_prepara_sem_real_assiste_e_registra(ambiente, servidor, caps
     assert "em_candidatura" in out
     assert "preencheu: Cidade" in out and "RESUMO DA ASSISTÊNCIA" in out
     assert "preencha você" in out and "bot-vagas marcar" in out
-    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["2500", "31/01/1999"]:
+    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["1750", "31/01/1999"]:
         assert s not in out, s
     assert stat.S_IMODE(ambiente.perfil_nav.stat().st_mode) == 0o700
     with Banco(ambiente.banco) as b:
@@ -470,7 +473,7 @@ def test_painel_mostra_status_novos_e_assistencia(ambiente, servidor, pdf, capsy
     det = c.get(f"/vaga/{chave}").text
     assert "Assistência do copiloto" in det and "Copiloto assistiu o formulário" in det
     assert "Cidade" in det and "consentimento" in det
-    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["2500", "31/01/1999"]:
+    for s in valores_sensiveis(RESPOSTAS_TESTE) + ["1750", "31/01/1999"]:
         assert s not in det, s
     assert _cli([ "marcar", chave, "enviada", "--banco", str(ambiente.banco)]) == 0
     html = c.get("/", params={"status": "enviada"}).text

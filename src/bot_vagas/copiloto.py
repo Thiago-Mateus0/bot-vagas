@@ -406,7 +406,9 @@ def escolher_opcao(valor: Any, opcoes: list[str]) -> int | None:
         if vn.isdigit():
             cands = [i for i, t in enumerate(textos) if re.search(rf"\b{re.escape(vn)}\b", t)]
         else:
-            cands = [i for i, t in enumerate(textos) if t in sinonimos]
+            cands = [i for i, t in enumerate(textos) if t == vn]  # o valor exato vence os sinônimos
+            if not cands:
+                cands = [i for i, t in enumerate(textos) if t in sinonimos]
             if not cands:
                 cands = [i for i, t in enumerate(textos) if any(re.search(rf"\b{re.escape(s)}\b", t) for s in sinonimos)]
             if not cands and len(vn) >= 4:  # parda/pardo, negra/negro...
@@ -621,8 +623,9 @@ def _texto_campo(c: dict[str, Any]) -> str:
 
 class Copiloto:
     def __init__(self, respostas: dict[str, Any] | None, pdf: Path | str | None, *, alvos: Alvos = ALVOS_PRODUCAO,
-                 log: Callable[..., None] = print, log_campos: LogCampos | None = None):
+                 log: Callable[..., None] = print, log_campos: LogCampos | None = None, notificador=None):
         self.respostas = respostas or {}
+        self.notificador = notificador  # notificacao.Notificador (opcional): só mensagens fixas, sem dados
         self.pdf = Path(pdf) if pdf else None
         self.alvos = alvos
         self.log = log
@@ -630,7 +633,9 @@ class Copiloto:
         self.registro = Registro()
         if log_campos is not None:
             self.registro.log_campos = str(log_campos.caminho)
-        self._ultima_tela_login: str | None = None  # tela (host+path) em que o último aviso de login saiu
+        # por aba: tela (host+path) em que o último aviso de login saiu. Aviso = 1 vez por mudança de página,
+        # não a cada varredura; com várias abas abertas, uma não "reseta" a outra.
+        self._tela_login_por_aba: dict[int, str] = {}
         self._telas_vistas: set[str] = set()
         self._grupos_feitos: set[tuple[str, str]] = set()
 
@@ -645,6 +650,10 @@ class Copiloto:
             return url
 
     # -- utilidades -----------------------------------------------------------------
+
+    def notificar(self, evento: str) -> None:
+        if self.notificador is not None:
+            self.notificador.notificar(evento)
 
     def url_permitida(self, url: str) -> bool:
         try:
@@ -676,17 +685,18 @@ class Copiloto:
         tela = self._tela(url)
         tela_nova = tela not in self._telas_vistas
         self._telas_vistas.add(tela)
+        aba = id(pagina)
         if pagina.evaluate(_JS_TEM_LOGIN):
-            if tela != self._ultima_tela_login:
-                self._ultima_tela_login = tela
+            if self._tela_login_por_aba.get(aba) != tela:
+                self._tela_login_por_aba[aba] = tela
                 self.log("PRECISA DE LOGIN: a página tem campo de senha. Faça login você mesmo; o bot não toca "
                          "em campos de login, e-mail ou captcha e segue aguardando.")
                 self.registro.avisos.append("tela de login detectada; aguardando o usuário")
+                self.notificar("login")
                 if self.log_campos is not None:
                     self.log_campos.tela(url, self.registro.passos, 0, login=True)
             return {"preenchidos": feitos, "pendentes": pendentes}
-        if self._ultima_tela_login is not None and tela != self._ultima_tela_login:
-            self._ultima_tela_login = None  # saiu da tela de login; se voltar a ela, avisa de novo
+        self._tela_login_por_aba.pop(aba, None)  # saiu da tela de login; se voltar a ela, avisa de novo
 
         campos: list[dict[str, Any]] = pagina.evaluate(_JS_COLETAR, ATR_ID)
         if self.log_campos is not None and tela_nova:
@@ -850,7 +860,14 @@ class Copiloto:
         finally:
             pagina.evaluate("() => { window.__botVagasPreenchendo = false; }")
 
+    @staticmethod
+    def _pular(c: dict[str, Any], motivo: str) -> str:
+        """Decidiu NÃO preencher (sem destacar): só anota o motivo para o log de depuração."""
+        c["_motivo"] = motivo
+        return ""
+
     def _pendente(self, pagina, c: dict[str, Any], url: str, motivo: str) -> None:
+        c["_motivo"] = motivo
         self._marcar(pagina, c["id"], "pendente", f"bot-vagas: preencha você ({motivo})")
         self.registro._add(self.registro.pendentes, _descricao_campo(c), motivo=motivo, url=url)
 
@@ -860,6 +877,7 @@ class Copiloto:
         r = self.registro
         linhas = ["", "RESUMO DA ASSISTÊNCIA (sem valores pessoais; o envio foi/é decisão sua):",
                   f"  passos de varredura: {r.passos}; PDF anexado: {'sim' if r.pdf_anexado else 'não'}",
+                  f"  encerramento: {r.encerramento or 'em andamento'}",
                   f"  campos preenchidos pelo bot ({len(r.preenchidos)}):"]
         linhas += [f"    - {p['campo']}  [{p.get('chave', '')}, {p.get('como', '')}]" for p in r.preenchidos] or ["    (nenhum)"]
         linhas.append(f"  campos NÃO preenchidos ({len(r.pendentes)}):")
@@ -867,64 +885,205 @@ class Copiloto:
         if r.avisos:
             linhas.append("  avisos:")
             linhas += [f"    - {a}" for a in r.avisos]
+        if r.log_campos:
+            linhas.append(f"  log de depuração: {r.log_campos}")
         linhas.append("  Quando realmente enviar: bot-vagas marcar <chave|url> enviada")
         return "\n".join(linhas)
 
 
 # --- navegador visível (só na CLI) -------------------------------------------------------
 
+class SinalDeTermino(Exception):
+    """Sinal recebido (2º Ctrl+C, ou SIGTERM/SIGHUP fora do laço) que interrompe uma chamada em andamento."""
+
+
+class _PrazoEsgotado(BaseException):
+    pass
+
+
+class _CapturaSinais:
+    """Durante a assistência, Ctrl+C (SIGINT), SIGTERM e SIGHUP só LIGAM UMA FLAG (`recebido`); o laço confere a
+    flag a cada ciclo e sai limpo. Motivo: uma exceção levantada no meio de uma chamada do Playwright quebra o
+    despachante dele e qualquer chamada seguinte (ctx.close) fica girando para sempre — era o travamento visto.
+    Um 2º Ctrl+C levanta KeyboardInterrupt (saída forçada). Só atua na thread principal (exigência de signal)."""
+
+    NOMES = {getattr(signal, n): r for n, r in (("SIGINT", "Ctrl+C"), ("SIGTERM", "SIGTERM"), ("SIGHUP", "SIGHUP"))
+             if hasattr(signal, n)}
+
+    def __init__(self):
+        self.recebido: str = ""
+        self._antigos: dict = {}
+
+    def _tratar(self, signum, frame):
+        if self.recebido and signum == signal.SIGINT:
+            raise KeyboardInterrupt  # 2º Ctrl+C: o usuário quer sair já
+        self.recebido = self.recebido or self.NOMES.get(signum, str(signum))
+
+    def __enter__(self):
+        if threading.current_thread() is threading.main_thread():
+            for s in self.NOMES:
+                try:
+                    self._antigos[s] = signal.signal(s, self._tratar)
+                except (ValueError, OSError):
+                    pass
+        return self
+
+    def __exit__(self, *exc):
+        for s, antigo in self._antigos.items():
+            try:
+                signal.signal(s, antigo)
+            except (ValueError, OSError):
+                pass
+        return False
+
+
 def abrir_contexto_persistente(p, pasta_perfil: Path, *, headless: bool = False):
-    """Chromium com perfil persistente. Sem stealth, sem UA falso, sem mexer em navigator.webdriver."""
-    return p.chromium.launch_persistent_context(
-        user_data_dir=str(pasta_perfil), headless=headless, locale="pt-BR",
-        viewport=None if not headless else {"width": 1280, "height": 900}, accept_downloads=False,
-    )
+    """Chromium com perfil persistente. Sem stealth, sem UA falso, sem mexer em navigator.webdriver.
+    Se outro Chromium já usa o perfil, levanta PerfilEmUso (mensagem curta, sem traceback na CLI)."""
+    from playwright.sync_api import Error as ErroPW
+
+    if perfil_em_uso(pasta_perfil):
+        raise PerfilEmUso()
+    try:
+        return p.chromium.launch_persistent_context(
+            user_data_dir=str(pasta_perfil), headless=headless, locale="pt-BR",
+            viewport=None if not headless else {"width": 1280, "height": 900}, accept_downloads=False,
+        )
+    except ErroPW as e:
+        if perfil_em_uso(pasta_perfil) or _PADRAO_ERRO_PERFIL_EM_USO.search(str(e)):
+            raise PerfilEmUso() from None
+        raise
+
+
+def _dormir_ouvindo(ctx, segundos: float) -> bool:
+    """Espera `segundos` PROCESSANDO eventos do Playwright (time.sleep não processa, e o fechamento da
+    janela nunca era percebido). Devolve True se o contexto fechou durante a espera."""
+    from playwright.sync_api import Error as ErroPW, TimeoutError as TimeoutPW
+
+    try:
+        ctx.wait_for_event("close", timeout=max(1, int(segundos * 1000)))
+        return True
+    except TimeoutPW:
+        return False
+    except ErroPW:
+        return True  # contexto/navegador já fechado
+
+
+def _encerrar_navegador(ctx, pw, *, seguro: bool = True, prazo: float = 5.0) -> None:
+    """Fecha contexto e driver. `seguro=False` quando uma exceção atravessou uma chamada do Playwright: aí o
+    despachante dele pode estar quebrado e ctx.close() giraria para sempre; na thread principal um alarme
+    (setitimer) corta a tentativa após `prazo` segundos. Fora da thread principal (testes) tenta direto."""
+    principal = threading.current_thread() is threading.main_thread() and hasattr(signal, "setitimer")
+    antigo = None
+    if principal:
+        def _estourou(signum, frame):
+            raise _PrazoEsgotado()
+        antigo = signal.signal(signal.SIGALRM, _estourou)
+        signal.setitimer(signal.ITIMER_REAL, prazo)
+    elif not seguro:
+        return  # sem como limitar o tempo: melhor deixar o processo terminar do que travar
+    try:
+        for fechar in (lambda: ctx and ctx.close(), lambda: pw and pw.stop()):
+            try:
+                fechar()
+            except _PrazoEsgotado:
+                break
+            except BaseException:  # navegador já morto, driver encerrado pelo Ctrl+C do terminal...
+                pass
+    except _PrazoEsgotado:
+        pass
+    finally:
+        if principal:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, antigo or signal.SIG_DFL)
 
 
 def login_gupy(pasta_perfil: Path | str = PASTA_PERFIL_PADRAO, *, url: str = URL_PORTAL_GUPY, log=print,
-               headless: bool = False, max_segundos: float | None = None) -> int:
-    """Abre o portal da Gupy para o Thiago fazer login. Não lê nem registra nada da sessão."""
-    from playwright.sync_api import sync_playwright
+               headless: bool = False, max_segundos: float | None = None,
+               deve_parar: Callable[[], bool] | None = None) -> int:
+    """Abre o portal da Gupy para o Thiago fazer login. Não lê nem registra nada da sessão.
+    Termina quando a janela fecha, com Ctrl+C, SIGTERM ou arquivo PARAR."""
+    from playwright.sync_api import Error as ErroPW, sync_playwright
 
     pasta = preparar_pasta_perfil(pasta_perfil)
+    if perfil_em_uso(pasta):
+        raise PerfilEmUso()
     log(AVISO_PERFIL.format(pasta=pasta))
     log(f"abrindo {url} em um Chromium visível. Faça login você mesmo; feche a janela quando terminar.")
     inicio = time.monotonic()
-    with sync_playwright() as p:
-        ctx = abrir_contexto_persistente(p, pasta, headless=headless)
+    pw = ctx = None
+    motivo = "janela fechada"
+    seguro = True
+    with _CapturaSinais() as sinais:
         try:
+            pw = sync_playwright().start()
+            ctx = abrir_contexto_persistente(pw, pasta, headless=headless)
             pagina = ctx.pages[0] if ctx.pages else ctx.new_page()
             pagina.goto(url, wait_until="domcontentloaded")
-            while ctx.pages:
+            while ctx.pages and not sinais.recebido:
                 if max_segundos is not None and time.monotonic() - inicio > max_segundos:
+                    motivo = "tempo limite"
                     break
-                time.sleep(0.5)
+                if deve_parar is not None and deve_parar():
+                    motivo = "arquivo PARAR"
+                    break
+                if _dormir_ouvindo(ctx, 0.5):
+                    break
+        except PerfilEmUso:
+            raise
+        except (KeyboardInterrupt, SinalDeTermino):
+            seguro = False
+            sinais.recebido = sinais.recebido or "Ctrl+C"
+        except ErroPW:
+            motivo = "janela fechada"
         finally:
-            try:
-                ctx.close()
-            except Exception:
-                pass
-    log("janela fechada. A sessão (se você logou) ficou no perfil local; nada foi lido pelo bot.")
+            _encerrar_navegador(ctx, pw, seguro=seguro)
+    if sinais.recebido:
+        motivo = f"interrompido ({sinais.recebido})"
+    log(f"login-gupy encerrado: {motivo}. A sessão (se você logou) ficou no perfil local; nada foi lido pelo bot.")
     return 0
 
 
 def assistir(url: str, copiloto: Copiloto, *, pasta_perfil: Path | str = PASTA_PERFIL_PADRAO, headless: bool = False,
-             intervalo: float = INTERVALO_PADRAO, max_passos: int | None = None, log=print) -> Registro:
-    """Abre a vaga no Chromium visível e repete `copiloto.passo` em todas as abas permitidas até a janela fechar."""
+             intervalo: float = INTERVALO_PADRAO, max_passos: int | None = None, log=print,
+             deve_parar: Callable[[], bool] | None = None, ao_ciclo: Callable[[Any], None] | None = None) -> Registro:
+    """Abre a vaga no Chromium visível e repete `copiloto.passo` em todas as abas permitidas até:
+    a janela fechar, Ctrl+C, SIGTERM/SIGHUP, o arquivo PARAR aparecer (`deve_parar`) ou `max_passos` (testes).
+
+    NUNCA propaga Ctrl+C/fechamento: sempre devolve o registro, com `encerramento` preenchido, para a CLI
+    imprimir o resumo e gravar a assistência. Só levanta PerfilEmUso (antes de abrir qualquer coisa).
+    `ao_ciclo(ctx)` existe só para testes (simular o usuário fechando a janela)."""
     from playwright.sync_api import Error as ErroPW, sync_playwright
 
     pasta = preparar_pasta_perfil(pasta_perfil)
+    if perfil_em_uso(pasta):
+        raise PerfilEmUso()
     log(AVISO_PERFIL.format(pasta=pasta))
     log("o bot NÃO clica em nada: você clica em 'Candidatar-se', 'Próximo' e 'Enviar'. "
-        "Ele só preenche campos vazios reconhecidos, anexa o PDF e destaca o resto. Feche a janela para terminar.")
+        "Ele só preenche campos vazios reconhecidos, anexa o PDF e destaca o resto. "
+        "Feche a janela (ou Ctrl+C) para terminar.")
+    reg = copiloto.registro
+    reg.encerramento = ""
     passos = 0
-    with sync_playwright() as p:
-        ctx = abrir_contexto_persistente(p, pasta, headless=headless)
+    pw = ctx = None
+    seguro = True
+    with _CapturaSinais() as sinais:
         try:
+            pw = sync_playwright().start()
+            ctx = abrir_contexto_persistente(pw, pasta, headless=headless)
             pagina = ctx.pages[0] if ctx.pages else ctx.new_page()
             pagina.goto(url, wait_until="domcontentloaded")
-            while ctx.pages:
+            while not sinais.recebido:
+                if not ctx.pages:
+                    reg.encerramento = "janela fechada"
+                    break
+                if deve_parar is not None and deve_parar():
+                    reg.encerramento = "parado pelo arquivo PARAR"
+                    copiloto.notificar("parado")
+                    break
                 for pg in list(ctx.pages):
+                    if sinais.recebido:
+                        break
                     try:
                         if pg.is_closed() or not copiloto.url_permitida(pg.url):
                             continue
@@ -934,17 +1093,36 @@ def assistir(url: str, copiloto: Copiloto, *, pasta_perfil: Path | str = PASTA_P
                         for n in r["pendentes"]:
                             log(f"  preencha você: {n}")
                     except ErroPW:
-                        continue  # navegação no meio da varredura: tenta no próximo ciclo
+                        continue  # navegação no meio da varredura ou aba fechada: tenta no próximo ciclo
+                if ao_ciclo is not None:
+                    ao_ciclo(ctx)
                 passos += 1
                 if max_passos is not None and passos >= max_passos:
+                    reg.encerramento = "limite de varreduras"
                     break
-                time.sleep(intervalo)
+                if _dormir_ouvindo(ctx, intervalo):
+                    reg.encerramento = "janela fechada"
+                    break
+        except PerfilEmUso:
+            raise
+        except (KeyboardInterrupt, SinalDeTermino):
+            seguro = False  # a exceção pode ter atravessado o Playwright
+            sinais.recebido = sinais.recebido or "Ctrl+C"
+        except ErroPW as e:
+            # TargetClosedError & cia.: a janela/navegador foi fechado no meio de uma chamada
+            fechado = ctx is None or not ctx.pages or "closed" in str(e).lower()
+            reg.encerramento = "janela fechada" if fechado else f"erro do navegador ({type(e).__name__})"
+        except Exception as e:  # nunca perder o registro
+            reg.encerramento = f"erro inesperado ({type(e).__name__})"
+            reg.avisos.append(f"erro inesperado no copiloto: {type(e).__name__}")
         finally:
-            try:
-                ctx.close()
-            except Exception:
-                pass
-    return copiloto.registro
+            _encerrar_navegador(ctx, pw, seguro=seguro)
+    if sinais.recebido:
+        # o Ctrl+C do terminal também derruba o Chromium; o que conta é o sinal, não o "fechou"
+        reg.encerramento = f"interrompido ({sinais.recebido})"
+    if copiloto.log_campos is not None:
+        copiloto.log_campos.evento("fim", encerramento=reg.encerramento, passos=reg.passos)
+    return reg
 
 
 def host_da_url(url: str) -> str:
