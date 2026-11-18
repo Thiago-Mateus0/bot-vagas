@@ -1,0 +1,12 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Login lento (fixture) — não é a Gupy</title></head>
+<body><div id="app"></div><button aria-label="ajuda">?</button>
+<script>
+  // como a Gupy: chega em branco e só depois pede o e-mail (sem campo de senha na primeira tela)
+  setTimeout(() => {
+    document.getElementById('app').innerHTML =
+      '<h1>Entrar com sua conta</h1><label for="email">E-mail</label>' +
+      '<input id="email" name="email" type="email" required>' +
+      '<button type="button" onclick="location.href=\'../passou_do_login.html\'">Continuar</button>';
+  }, 1200);
+</script>
+</body></html>

@@ -1,0 +1,23 @@
+# Modo 100% automático. Copie para automacao.yaml (fica FORA do git).
+# O bot se candidata SOZINHO às vagas da Gupy que passaram no filtro, inclusive aceitando termos/LGPD.
+# Risco aceito por você: banimento da conta. Continua proibido: resolver captcha e disfarçar o robô.
+
+ativo: false            # true = o `bot-vagas rodar` (timer das 14h) também se candidata
+modo: simulacao         # simulacao = vai até a última tela, tira screenshot e NÃO envia; envio = envia de verdade
+aceitar_termos: true    # marca as caixas obrigatórias de termos/política de privacidade/LGPD
+usar_modelo_para_perguntas_abertas: false   # true SÓ depois de definir o teto no painel da Anthropic (custa API)
+entrar_com_linkedin: false  # true = se a Gupy pedir login, o bot clica no botão "LinkedIn" (usa a sessão do LinkedIn
+                            # salva pelo login-gupy; nunca digita e-mail/senha; se o LinkedIn pedir senha, ele para)
+digitar_senha_gupy: false  # true = se a Gupy pedir login, o bot DIGITA o login e a senha da Gupy guardados no
+                           # chaveiro do sistema (`bot-vagas senha-gupy`) e clica em "Acessar conta". Só em gupy.io,
+                           # no máximo 1 vez por rodada; código/verificação/captcha => para e avisa.
+exigir_nota_do_modelo: false                # true = só vagas aprovadas pelo `avaliar --real`
+limite_diario: 10
+limite_por_site:
+  gupy: 10
+janela_inicio: "14:00"  # fora deste horário o bot não começa candidaturas (use --agora para forçar)
+janela_fim: "17:00"
+pausa_min_s: 120        # pausa aleatória entre uma candidatura e outra
+pausa_max_s: 420
+max_telas_por_vaga: 15
+navegador_visivel: auto # auto = janela visível se houver tela; sim; nao (headless)

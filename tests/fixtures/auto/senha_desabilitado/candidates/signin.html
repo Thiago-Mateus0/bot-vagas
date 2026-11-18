@@ -1,0 +1,14 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Login da Gupy (fixture) — não é a Gupy</title></head><body>
+<h1>Entrar com sua conta</h1>
+<label for="email">E-mail ou CPF</label><input id="email" name="email" type="text" required>
+<label for="senha">Senha</label><input id="senha" name="password" type="password" required>
+<button id="acessar" type="button" disabled onclick="location.href='../../passo1.html'">Acessar conta</button>
+<button type="button" onclick="location.href='../../entrar_sem_senha.html'">Entrar sem senha</button>
+<button type="button" onclick="location.href='../../linkedin_clicado.html'">LinkedIn</button>
+<script>
+  // como a Gupy: o botão só libera com os dois campos preenchidos
+  const atualizar = () => { if (0) document.getElementById('acessar').disabled =
+      !(document.getElementById('email').value && document.getElementById('senha').value); };
+  document.addEventListener('input', atualizar);
+</script>
+</body></html>

@@ -25,8 +25,10 @@ BANCO_PADRAO = RAIZ_PROJETO / "vagas.db"
 # "preparada" (Etapa 4): candidatura preparada manualmente (PDF + pacote em saida/); o envio é do Thiago.
 # "em_candidatura": o copiloto (candidatar) está/esteve assistindo o formulário; "enviada"/"desistiu": o
 # Thiago informou via `marcar` (o bot nunca envia, logo nunca sabe sozinho). Sem mudança de schema.
+# "simulada"/"pulada" (modo automático, piloto.py): o bot foi até a última tela sem enviar (simulação) ou
+# desistiu da vaga sozinho (campo que não sabe, captcha, botão não encontrado...); o motivo fica em `motivo`.
 STATUS = ("nova", "bloqueada", "avaliada", "abaixo_do_corte", "aprovada", "preparada",
-          "em_candidatura", "enviada", "desistiu")
+          "em_candidatura", "simulada", "pulada", "enviada", "desistiu")
 STATUS_MANUAIS = ("enviada", "desistiu", "em_candidatura")  # os que `marcar` aceita
 
 _SCHEMA = """
@@ -105,8 +107,14 @@ class Banco:
         """Insere só as vagas ainda não vistas. Devolve quantas foram novas."""
         novas = 0
         agora = _agora()
+        # mesma vaga vinda de duas fontes (ex.: Gupy e velrino/jobs) com nome de empresa/cargo escrito diferente:
+        # o endereço normalizado (sem query) é o mesmo -> não duplica
+        urls = {normalizar_url(r[0]) for r in self.con.execute("SELECT url FROM vagas")}
         with self.con:
             for v in vagas:
+                url_norm = normalizar_url(v.url)
+                if url_norm in urls:
+                    continue
                 chave = chave_vaga(v.empresa, v.cargo, v.url)
                 cur = self.con.execute(
                     """INSERT OR IGNORE INTO vagas
@@ -120,6 +128,7 @@ class Banco:
                     ),
                 )
                 novas += cur.rowcount
+                urls.add(url_norm)
         return novas
 
     def listar(self, status: str | Iterable[str] | None = None) -> list[sqlite3.Row]:

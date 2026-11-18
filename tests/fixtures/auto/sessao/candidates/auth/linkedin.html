@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Validação (fixture) — não é a Gupy</title></head>
+<body><p>Validando suas informações (Isso pode levar alguns segundos)</p>
+<script>
+  // como a Gupy real: a sessão passa a valer, mas esta tela volta para o login em vez de seguir para o formulário
+  localStorage.setItem('logado', '1');
+  setTimeout(() => location.replace('../signin.html'), 1000);
+</script>
+</body></html>

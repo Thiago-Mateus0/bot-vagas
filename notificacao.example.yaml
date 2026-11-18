@@ -1,0 +1,12 @@
+# EXEMPLO. Copie para notificacao.yaml (fica FORA do git) para receber avisos no celular via ntfy.sh.
+# 1) Instale o app ntfy no celular e assine um tópico com nome DIFÍCIL de adivinhar
+#    (quem souber o nome do tópico lê os avisos; trate como senha).
+# 2) Copie este arquivo para notificacao.yaml, troque o tópico e mude ativo para true.
+# 3) Teste: bot-vagas testar-notificacao
+# Os avisos têm só texto genérico e fixo ("o copiloto pausou: a página pede login..."): nada de empresa, vaga,
+# link, nome, e-mail ou respostas.
+ntfy:
+  ativo: false
+  servidor: https://ntfy.sh
+  topico: troque-por-um-nome-longo-e-aleatorio
+  intervalo_min_s: 600   # não repete o mesmo aviso em menos de 10 minutos

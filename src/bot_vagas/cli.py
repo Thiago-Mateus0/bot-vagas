@@ -24,6 +24,18 @@ Copiloto Gupy (SEMI-AUTOMÁTICO: Thiago faz login e clica em tudo; o bot só pre
     bot-vagas login-gupy                              # Chromium visível para VOCÊ logar; nada é lido
     bot-vagas candidatar <url|chave> [--pdf x.pdf] [--idioma pt|en]   # assiste o formulário até fechar
     bot-vagas marcar <chave|url> enviada|desistiu|em_candidatura      # você diz quando enviou
+    bot-vagas marcar <chave|url> fila                 # devolve a vaga ao modo automático
+    bot-vagas senha-gupy [--verificar|--apagar]       # login/senha da Gupy no chaveiro (o bot digita)
+
+Rodada, parada e agendamento:
+    bot-vagas rodar                 # buscar + filtrar (+ modo automático, se automacao.yaml tiver ativo: true)
+    bot-vagas automatico [--agora] [--simular] [--limite N]   # candidata-se SOZINHO (simulação ou envio, ver automacao.yaml)
+    bot-vagas parar | retomar       # cria/apaga o arquivo PARAR: interrompe qualquer execução em andamento
+    bot-vagas gerar-timer           # gera (NÃO instala) os arquivos de systemd --user em systemd/
+    bot-vagas testar-notificacao    # manda um aviso de teste pelo ntfy.sh (se notificacao.yaml estiver ativo)
+
+Códigos de saída: 0 ok; 1 erro/alarme; 2 recusado; 3 perfil do navegador em uso; 4 parado pelo PARAR;
+130 interrompido (Ctrl+C/SIGTERM).
 """
 
 from __future__ import annotations
@@ -32,6 +44,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from . import parada
 from .banco import STATUS_MANUAIS
 from .copiloto import PASTA_PERFIL_PADRAO
 from .curriculo import CurriculoNaoCabeEmUmaPagina, gerar_curriculo
@@ -40,7 +53,13 @@ from .plano import plano_neutro
 
 SAIDA_PADRAO = RAIZ_PROJETO / "saida"
 SUBCOMANDOS = ("curriculo", "buscar", "filtrar", "avaliar", "listar", "painel", "preparar",
-               "login-gupy", "candidatar", "marcar")
+               "login-gupy", "candidatar", "marcar", "rodar", "parar", "retomar", "gerar-timer", "testar-notificacao",
+               "automatico", "senha-gupy")
+# comandos que TRABALHAM: não começam com o arquivo PARAR presente
+RESPEITAM_PARAR = ("buscar", "filtrar", "avaliar", "preparar", "login-gupy", "candidatar", "rodar", "automatico")
+SAIDA_PERFIL_EM_USO = 3
+SAIDA_PARADO = 4
+SAIDA_INTERROMPIDO = 130
 
 
 # --- Etapa 1 ---------------------------------------------------------------
@@ -86,15 +105,27 @@ def cmd_buscar(args: argparse.Namespace) -> int:
         print("fontes.yaml não tem nenhuma fonte configurada.", file=sys.stderr)
         return 1
     print(f"consultando {len(fontes)} fonte(s) via APIs públicas (sem login, sem dados pessoais)...")
+    http = args.http_factory() if getattr(args, "http_factory", None) else ClienteHTTPReal()
     with Banco(args.banco) as banco:
-        total = buscar(fontes, ClienteHTTPReal(), banco)
+        total = buscar(fontes, http, banco)
     print(f"total: {total['baixadas']} baixadas, {total['novas']} novas, {total['fontes_com_erro']} fonte(s) com erro, "
           f"{total['alarmes']} alarme(s) de formato/bloqueio")
     if total["alarmes"]:
         print("ATENÇÃO: houve alarme de mudança de formato ou bloqueio (ver mensagens acima); "
               "nada foi contornado. Código de saída 1.", file=sys.stderr)
+        _notificador(args)("alarme_fonte")
         return 1
     return 0
+
+
+def _notificador(args):
+    """Notificador ntfy (desligado se notificacao.yaml não existe ou tem ativo: false). Testes injetam outro."""
+    if getattr(args, "notificador", None) is not None:
+        return args.notificador
+    from .notificacao import notificador_padrao
+
+    args.notificador = notificador_padrao(getattr(args, "notificacao", None))
+    return args.notificador
 
 
 def cmd_filtrar(args: argparse.Namespace) -> int:
@@ -140,6 +171,8 @@ def cmd_avaliar(args: argparse.Namespace) -> int:
         print(f"avaliadas: {total['aprovadas']} aprovadas, {total['abaixo_do_corte']} abaixo do corte, "
               f"{total['erros']} erros, {total['bloqueadas_por_teto']} não avaliadas por teto; "
               f"gasto no mês: US$ {contador.gasto_do_mes():.4f}")
+    if total["bloqueadas_por_teto"]:
+        _notificador(args)("teto")
     return 0
 
 
@@ -283,17 +316,33 @@ def _cfg_copiloto(args) -> dict:
 
 
 def cmd_login_gupy(args: argparse.Namespace) -> int:
-    from .copiloto import login_gupy
+    from .copiloto import Alvos, PerfilEmUso, login_gupy, validar_url_candidatura
+    from .pagina import URLRecusada
 
     cfg = _cfg_copiloto(args)
-    return login_gupy(cfg["pasta_perfil"], headless=cfg["headless"], max_segundos=cfg.get("max_segundos"))
+    kw = {"url": cfg["url_login"]} if cfg.get("url_login") else {}
+    if getattr(args, "url", None):
+        try:  # só links da Gupy (allowlist + anti-SSRF)
+            kw["url"] = validar_url_candidatura(args.url, Alvos(permitir_loopback=bool(cfg["permitir_loopback"])))
+        except URLRecusada as e:
+            print(f"RECUSADO: {e}", file=sys.stderr)
+            return 2
+        print("Abra a candidatura: clique em 'Candidatar-se', faça login se pedir e, quando aparecer o formulário, "
+              "FECHE a janela (não precisa enviar nada).")
+    try:
+        return login_gupy(cfg["pasta_perfil"], headless=cfg["headless"], max_segundos=cfg.get("max_segundos"),
+                          canal=cfg.get("canal"), parar=parada.parada_pedida, **kw)
+    except PerfilEmUso as e:
+        print(f"ERRO: {e}", file=sys.stderr)
+        return SAIDA_PERFIL_EM_USO
 
 
 def cmd_candidatar(args: argparse.Namespace) -> int:
     import json
 
     from .banco import Banco
-    from .copiloto import Alvos, Copiloto, assistir, host_da_url, validar_url_candidatura
+    from .copiloto import (MOTIVO_PARAR, MOTIVOS_INTERRUPCAO, Alvos, Copiloto, LogCampos, PerfilEmUso, assistir,
+                           host_da_url, perfil_em_uso, validar_url_candidatura)
     from .filtro import carregar_filtros
     from .fontes import Vaga
     from .gasto import Contador, carregar_custos
@@ -316,6 +365,9 @@ def cmd_candidatar(args: argparse.Namespace) -> int:
             print(f"RECUSADO: esta vaga já está marcada como ENVIADA (chave {row['chave'][:10]}…). "
                   "Para assistir de novo mesmo assim, repita com --forcar.", file=sys.stderr)
             return 2
+        if perfil_em_uso(cfg["pasta_perfil"]):  # antes de preparar/mudar status: nada acontece
+            print(f"ERRO: {PerfilEmUso()}", file=sys.stderr)
+            return SAIDA_PERFIL_EM_USO
 
         # 1) PDF: o informado > o da preparação registrada > preparar agora SEM --real (nenhuma chamada paga)
         pdf = args.pdf
@@ -368,15 +420,37 @@ def cmd_candidatar(args: argparse.Namespace) -> int:
             print(f"PDF não encontrado: {pdf}", file=sys.stderr)
             return 1
         chave = row["chave"]
+        status_anterior = row["status"]
         banco.atualizar_status(chave, "em_candidatura")
         print(f"status: em_candidatura (chave {chave}). PDF a anexar: {pdf}")
 
         # 2) assistência (Chromium visível, perfil persistente). Valores pessoais só vão para a página.
-        copiloto = Copiloto(carregar_respostas(args.respostas), pdf, alvos=alvos)
-        registro = assistir(url, copiloto, pasta_perfil=cfg["pasta_perfil"], headless=cfg["headless"],
-                            intervalo=cfg["intervalo"], max_passos=cfg["max_passos"])
+        respostas = carregar_respostas(args.respostas)
+        log_campos = None
+        if not args.sem_log:
+            log_campos = LogCampos(cfg.get("pasta_logs"), respostas, extras_sensiveis=_contato_do_perfil(args.perfil))
+            print(f"log de depuração (local, 0600, sem valores pessoais): {log_campos.caminho}  (--sem-log desliga)")
+        notificador = _notificador(args)
+        copiloto = Copiloto(respostas, pdf, alvos=alvos, log_campos=log_campos,
+                            notificar=notificador if notificador.ativo else None)
+        erro: BaseException | None = None
+        try:
+            assistir(url, copiloto, pasta_perfil=cfg["pasta_perfil"], headless=cfg["headless"],
+                     intervalo=cfg["intervalo"], max_passos=cfg["max_passos"], canal=cfg.get("canal"),
+                     parar=parada.parada_pedida)
+        except PerfilEmUso as e:  # outro Chromium abriu o perfil entre a checagem e o lançamento
+            if log_campos is not None:
+                log_campos.fechar()
+            banco.atualizar_status(chave, status_anterior)
+            print(f"ERRO: {e}", file=sys.stderr)
+            return SAIDA_PERFIL_EM_USO
+        except BaseException as e:  # Ctrl+C repetido, erro inesperado: o resumo sai e é gravado mesmo assim
+            erro = e
+        registro = copiloto.registro
+        if not registro.encerramento:
+            registro.encerramento = f"erro: {type(erro).__name__}" if erro else "fim"
 
-        # 3) resumo e histórico (sem valores pessoais)
+        # 3) resumo e histórico (sem valores pessoais) — SEMPRE, qualquer que tenha sido o fim
         print(copiloto.resumo())
         historico = detalhes.get("historico_assistencia") if isinstance(detalhes.get("historico_assistencia"), list) else []
         if detalhes.get("assistencia"):
@@ -384,8 +458,33 @@ def cmd_candidatar(args: argparse.Namespace) -> int:
         detalhes["assistencia"] = registro.para_json()
         detalhes["historico_assistencia"] = historico[-10:]
         banco.atualizar_status(chave, "em_candidatura", detalhes=json.dumps(detalhes, ensure_ascii=False))
+        if log_campos is not None:
+            log_campos.fechar()
     print(f"\nSe você enviou a candidatura, registre: bot-vagas marcar {chave} enviada")
+    if erro is not None:
+        if isinstance(erro, KeyboardInterrupt):
+            return SAIDA_INTERROMPIDO
+        print(f"ERRO inesperado no copiloto ({type(erro).__name__}: {str(erro).splitlines()[0][:200] if str(erro) else ''}). "
+              "O resumo acima foi gravado.", file=sys.stderr)
+        return 1
+    if registro.encerramento == MOTIVO_PARAR:
+        print("PARADO pelo botão PARAR.", file=sys.stderr)
+        return SAIDA_PARADO
+    if registro.encerramento in MOTIVOS_INTERRUPCAO:
+        return SAIDA_INTERROMPIDO
     return 0
+
+
+def _contato_do_perfil(caminho) -> list[str]:
+    """Nome/contatos do perfil, só para o log de depuração SABER o que omitir. Nunca são gravados."""
+    try:
+        pf = carregar_perfil(caminho)
+    except Exception:
+        return []
+    c = pf.contato
+    partes = [pf.nome, c.email, c.telefone, c.linkedin, c.github]
+    partes += [x for x in pf.nome.split() if len(x) >= 4]
+    return [x for x in partes if x]
 
 
 def cmd_marcar(args: argparse.Namespace) -> int:
@@ -405,11 +504,296 @@ def cmd_marcar(args: argparse.Namespace) -> int:
             detalhes = {}
         if not isinstance(detalhes, dict):
             detalhes = {}
-        detalhes["marcacao"] = {"status": args.status, "quando": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        status = args.status
+        if status == "fila":
+            if detalhes.get("filtro") != "passou":
+                print("essa vaga não passou no filtro: o modo automático não a tentaria. Nada mudou.", file=sys.stderr)
+                return 2
+            if row["status"] in ("enviada", "em_candidatura"):
+                print(f"a vaga está '{row['status']}': confira na Gupy antes; não devolvi à fila.", file=sys.stderr)
+                return 2
+            status = "nova"
+        detalhes["marcacao"] = {"status": status, "quando": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 "anterior": row["status"]}
-        banco.atualizar_status(row["chave"], args.status, detalhes=json.dumps(detalhes, ensure_ascii=False))
-    print(f"{row['empresa']} / {row['cargo']}: {row['status']} -> {args.status}")
+        banco.atualizar_status(row["chave"], status, detalhes=json.dumps(detalhes, ensure_ascii=False))
+    print(f"{row['empresa']} / {row['cargo']}: {row['status']} -> {status}")
     return 0
+
+
+# --- rodada, parada, agendamento, notificação -----------------------------------
+
+def cmd_rodar(args: argparse.Namespace) -> int:
+    """Rodada do timer: buscar + filtrar. Sem --real e sem candidatura: nada pago, nada enviado."""
+    from .banco import Banco
+    from .filtro import carregar_filtros
+    from .pipeline import filtrar, pendentes_de_avaliacao
+
+    print("rodada: buscar + filtrar (nenhuma candidatura é enviada; nenhuma chamada paga é feita).")
+    codigo = cmd_buscar(args)
+    parada.verificar()
+    with Banco(args.banco) as banco:
+        filtrar(banco, carregar_filtros(args.filtros))
+        n = len(pendentes_de_avaliacao(banco))
+        aprovadas = len(banco.listar("aprovada"))
+    print(f"fim da busca: {n} vaga(s) aguardando avaliação (bot-vagas avaliar --real), {aprovadas} aprovada(s). "
+          "Veja no painel: bot-vagas painel")
+    from .automacao import ConfigInvalida, carregar_config
+
+    try:
+        ativo = carregar_config(args.automacao).ativo
+    except ConfigInvalida as e:
+        print(f"ERRO em automacao.yaml: {e}", file=sys.stderr)
+        return 1
+    if not ativo:
+        print("modo automático desligado (automacao.yaml ausente ou ativo: false): nenhuma candidatura feita.")
+        return codigo
+    codigo_auto = _rodada_automatica(args, agora=False)
+    return codigo_auto if codigo_auto else codigo
+
+
+def cmd_automatico(args: argparse.Namespace) -> int:
+    return _rodada_automatica(args, agora=args.agora)
+
+
+MOTIVOS_ATENCAO = ("captcha", "login", "bloqueio")
+
+
+def _rodada_automatica(args: argparse.Namespace, *, agora: bool) -> int:
+    """Modo 100% automático na Gupy (piloto.py). Simulação ou envio conforme automacao.yaml."""
+    import dataclasses
+    import json
+
+    from .automacao import (ConfigInvalida, carregar_config, dentro_da_janela, pausa_aleatoria, tentativas_hoje,
+                            vagas_elegiveis)
+    from .banco import Banco
+    from .copiloto import (MOTIVO_PARAR, MOTIVOS_INTERRUPCAO, Alvos, LogCampos, PerfilEmUso, perfil_em_uso)
+    from .filtro import carregar_filtros
+    from .gasto import Contador, TetoAtingido, carregar_custos
+    from .pipeline import vaga_de_linha
+    from .piloto import executar_rodada
+    from .preparar import preparar
+    from .respostas import carregar_respostas
+    from .respostas_abertas import RespostaDescartada, responder
+
+    try:
+        cfg = carregar_config(args.automacao)
+    except ConfigInvalida as e:
+        print(f"ERRO em automacao.yaml: {e}", file=sys.stderr)
+        return 1
+    if getattr(args, "simular", False):
+        cfg = dataclasses.replace(cfg, modo="simulacao")
+    teste = dict(args.copiloto_cfg or {})
+    if not agora and not dentro_da_janela(cfg):
+        print(f"fora da janela {cfg.janela_inicio}–{cfg.janela_fim} (automacao.yaml): nenhuma candidatura agora. "
+              "Para forçar: bot-vagas automatico --agora")
+        return 0
+    if cfg.envia_de_verdade:
+        print("MODO AUTOMÁTICO — ENVIO REAL: o bot vai clicar em 'Enviar' sozinho.")
+    else:
+        print("MODO AUTOMÁTICO — SIMULAÇÃO: o bot vai até a última tela, tira screenshot e NÃO envia.")
+    pasta_perfil = teste.get("pasta_perfil") or getattr(args, "perfil_navegador", None) or PASTA_PERFIL_PADRAO
+    if perfil_em_uso(pasta_perfil):
+        print(f"ERRO: {PerfilEmUso()}", file=sys.stderr)
+        return SAIDA_PERFIL_EM_USO
+
+    perfil = carregar_perfil(args.perfil)
+    respostas = carregar_respostas(args.respostas)
+    filtros = carregar_filtros(args.filtros)
+    custos = carregar_custos(args.custos)
+    client = None
+    if cfg.usar_modelo_para_perguntas_abertas:
+        # autorização dada pelo Thiago em automacao.yaml (depois do teto na conta); o contador também limita
+        client = args.client_factory() if getattr(args, "client_factory", None) else _cliente_anthropic_real()
+    notificador = _notificador(args)
+    saida = Path(args.saida)
+    with Banco(args.banco) as banco:
+        contador = Contador(banco, custos)
+        vagas = vagas_elegiveis(banco, cfg)
+        if args.limite is not None:
+            vagas = vagas[: args.limite]
+        if not vagas:
+            print("nenhuma vaga elegível para o modo automático (só Gupy, que passaram no filtro e ainda não tentadas).")
+            return 0
+        print(f"{len(vagas)} vaga(s) elegível(is). Limite: {cfg.limite_diario}/dia "
+              f"({', '.join(f'{k}: {v}' for k, v in cfg.limite_por_site.items())}).")
+
+        def restantes(site: str) -> int:
+            feitas = tentativas_hoje(banco)
+            return min(cfg.limite_diario - sum(feitas.values()),
+                       int(cfg.limite_por_site.get(site, cfg.limite_diario)) - feitas.get(site, 0))
+
+        def gerar_pdf(row) -> Path:
+            atual = banco.buscar_por_chave(row["chave"]) or row
+            try:
+                d = json.loads(atual["detalhes"]) if atual["detalhes"] else {}
+            except ValueError:
+                d = {}
+            prep = d.get("preparacao") if isinstance(d, dict) else None
+            if isinstance(prep, dict) and prep.get("pdf") and Path(prep["pdf"]).exists():
+                return Path(prep["pdf"])
+            r = preparar(vaga_de_linha(row), perfil=perfil, banco=banco, filtros=filtros, respostas=respostas,
+                         saida=saida, client=None, contador=contador, log=lambda *a, **k: None)
+            return r.pdf
+
+        # PDFs ANTES de abrir o navegador do piloto (o gerador de PDF também usa o Playwright)
+        cabem = max(0, cfg.limite_diario - sum(tentativas_hoje(banco).values()))
+        vagas = vagas[:cabem] if cabem else []
+        if not vagas:
+            print("limite diário já atingido hoje: nenhuma candidatura nova.")
+            return 0
+        pdfs: dict[str, Path | Exception] = {}
+        for row in vagas:
+            parada.verificar()
+            try:
+                pdfs[row["chave"]] = gerar_pdf(row)
+            except Exception as e:  # noqa: BLE001 — a vaga é pulada e registrada pelo piloto
+                pdfs[row["chave"]] = e
+        vagas = [banco.buscar_por_chave(r["chave"]) or r for r in vagas]  # status/detalhes atualizados
+
+        def preparar_pdf(row) -> Path:
+            pdf = pdfs.get(row["chave"])
+            if isinstance(pdf, Exception) or pdf is None:
+                raise RuntimeError("PDF não gerado") from (pdf if isinstance(pdf, Exception) else None)
+            return pdf
+
+        def responder_para(row):
+            if client is None:
+                return None
+            vaga = vaga_de_linha(row)
+            from .preparar import detectar_idioma
+
+            idioma = detectar_idioma(f"{vaga.cargo}\n{vaga.descricao}")
+
+            def responder_aberta(pergunta: str) -> str | None:
+                parada.verificar()
+                try:
+                    contador.exigir_orcamento()
+                except TetoAtingido as e:
+                    print(f"  AVISO: {e}", file=sys.stderr)
+                    notificador("teto")
+                    return None
+                try:
+                    texto, bruta = responder(pergunta, vaga, perfil, idioma, client)
+                except RespostaDescartada as e:
+                    if e.resposta is not None:
+                        contador.registrar(e.resposta, finalidade="pergunta_aberta", chave_vaga=row["chave"])
+                    print(f"  pergunta aberta sem resposta segura ({e})")
+                    return None
+                contador.registrar(bruta, finalidade="pergunta_aberta", chave_vaga=row["chave"])
+                return texto
+
+            return responder_aberta
+
+        log_campos = None if getattr(args, "sem_log", False) else LogCampos(
+            teste.get("pasta_logs"), respostas, prefixo="automatico", extras_sensiveis=_contato_do_perfil(args.perfil))
+        if log_campos is not None:
+            print(f"log de depuração (local, 0600, sem valores): {log_campos.caminho}")
+        alvos = Alvos(permitir_loopback=bool(teste.get("permitir_loopback")))
+        try:
+            rodada = executar_rodada(
+                vagas, banco=banco, cfg=cfg, preparar_pdf=preparar_pdf, respostas=respostas,
+                responder_para=responder_para, pasta_perfil=Path(pasta_perfil),
+                capturas=Path(teste.get("capturas") or saida / "capturas"), restantes=restantes, alvos=alvos,
+                headless=teste.get("headless"), canal=teste.get("canal"), parar=parada.parada_pedida,
+                notificar=notificador, log_campos=log_campos,
+                pausa=(lambda: float(teste["pausa"])) if "pausa" in teste else (lambda: pausa_aleatoria(cfg)),
+                credenciais=teste.get("credenciais") or _carregar_credenciais)
+        except PerfilEmUso as e:
+            print(f"ERRO: {e}", file=sys.stderr)
+            return SAIDA_PERFIL_EM_USO
+        finally:
+            if log_campos is not None:
+                log_campos.fechar()
+    resumo = ", ".join(f"{k}: {v}" for k, v in sorted(rodada.por_resultado.items())) or "nada"
+    print(f"\nRESUMO DO MODO AUTOMÁTICO ({cfg.modo}): {resumo}"
+          + (f". Parou: {rodada.motivo_fim}" if rodada.motivo_fim else ""))
+    print("Screenshots em saida/capturas/. Veja o detalhe de cada vaga no painel (bot-vagas painel).")
+    from . import sessao_sso
+    for linha in sessao_sso.resumo():
+        print(linha)
+    if rodada.motivo_fim == MOTIVO_PARAR:
+        return SAIDA_PARADO
+    if rodada.motivo_fim in MOTIVOS_INTERRUPCAO:
+        return SAIDA_INTERROMPIDO
+    if any(m in rodada.motivo_fim for m in MOTIVOS_ATENCAO) or "falhou" in rodada.motivo_fim:
+        return 1
+    return 0
+
+
+def _carregar_credenciais():
+    from . import credenciais
+
+    return credenciais.carregar()
+
+
+def cmd_senha_gupy(args: argparse.Namespace) -> int:
+    """Guarda/apaga o login e a senha da GUPY no chaveiro do sistema. Nada é impresso nem gravado em arquivo."""
+    import getpass
+
+    from . import credenciais
+
+    kr = getattr(args, "keyring", None)
+    ler = getattr(args, "ler_segredo", None) or getpass.getpass
+    try:
+        if args.apagar:
+            apagou = credenciais.apagar(kr)
+            print("login e senha da Gupy apagados do chaveiro." if apagou else "não havia nada guardado.")
+            return 0
+        if args.verificar:
+            tem = credenciais.carregar(kr) is not None
+            print("há login e senha da Gupy no chaveiro." if tem else "NÃO há login e senha da Gupy no chaveiro.")
+            return 0 if tem else 1
+        print("Login e senha da GUPY (não do LinkedIn). Ficam só no chaveiro do Linux; nada aparece na tela.")
+        login = ler("E-mail ou CPF da Gupy: ").strip()
+        senha = ler("Senha da Gupy: ")
+        if not login or not senha:
+            print("RECUSADO: login e senha não podem ser vazios.", file=sys.stderr)
+            return 2
+        if ler("Repita a senha: ") != senha:
+            print("RECUSADO: as senhas não conferem. Nada foi guardado.", file=sys.stderr)
+            return 2
+        credenciais.salvar(login, senha, kr)
+        del senha
+    except credenciais.CredencialIndisponivel as e:
+        print(f"ERRO: {e}", file=sys.stderr)
+        return 1
+    print("guardado no chaveiro. Ligue `digitar_senha_gupy: true` no automacao.yaml para o bot usar.")
+    return 0
+
+
+def cmd_parar(args: argparse.Namespace) -> int:
+    c = parada.pedir_parada("cli")
+    print(f"PARAR acionado: {c}. Execuções em andamento param no próximo ciclo; novas não começam. "
+          "Para liberar: bot-vagas retomar")
+    return 0
+
+
+def cmd_retomar(args: argparse.Namespace) -> int:
+    if parada.retomar():
+        print("PARAR removido: o bot pode rodar de novo.")
+    else:
+        print("não havia PARAR ativo.")
+    return 0
+
+
+def cmd_gerar_timer(args: argparse.Namespace) -> int:
+    from .agendamento import INSTRUCOES, gerar
+
+    service, timer = gerar(args.saida, horario=args.horario)
+    print(INSTRUCOES.format(service=service, timer=timer))
+    return 0
+
+
+def cmd_testar_notificacao(args: argparse.Namespace) -> int:
+    n = _notificador(args)
+    if not n.ativo:
+        print("notificações desligadas: crie notificacao.yaml a partir de notificacao.example.yaml "
+              "(ntfy.ativo: true e um tópico).", file=sys.stderr)
+        return 1
+    if n("teste"):
+        print("notificação de teste enviada (texto genérico). Confira no app do ntfy.")
+        return 0
+    return 1
 
 
 # --- montagem --------------------------------------------------------------
@@ -425,7 +809,8 @@ def construir_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("buscar", help="REDE: baixa vagas das APIs públicas e salva no SQLite")
     _opcoes_comuns(p)
     p.add_argument("--fontes", type=Path, default=RAIZ_PROJETO / "fontes.yaml")
-    p.set_defaults(func=cmd_buscar)
+    p.add_argument("--notificacao", type=Path, default=None, help="config do ntfy (padrão notificacao.yaml)")
+    p.set_defaults(func=cmd_buscar, http_factory=None, notificador=None)
 
     p = sub.add_parser("filtrar", help="fase A: filtro por palavras-chave")
     _opcoes_comuns(p)
@@ -442,7 +827,8 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--perfil", type=Path, default=PERFIL_PADRAO)
     p.add_argument("--limite", type=int, default=None, help="avaliar no máximo N vagas")
     p.add_argument("--real", action="store_true", help="AUTORIZA chamadas pagas à API da Anthropic")
-    p.set_defaults(func=cmd_avaliar, client_factory=None)
+    p.add_argument("--notificacao", type=Path, default=None, help="config do ntfy (padrão notificacao.yaml)")
+    p.set_defaults(func=cmd_avaliar, client_factory=None, notificador=None)
 
     p = sub.add_parser("listar", help="tabela das vagas no banco")
     _opcoes_comuns(p)
@@ -475,6 +861,8 @@ def construir_parser() -> argparse.ArgumentParser:
 
     # --- copiloto Gupy ---
     p = sub.add_parser("login-gupy", help="abre um Chromium VISÍVEL com perfil persistente para VOCÊ fazer login na Gupy")
+    p.add_argument("url", nargs="?", metavar="URL",
+                   help="opcional: link de uma vaga da Gupy, para logar pelo caminho do 'Candidatar-se' (padrão: portal)")
     p.add_argument("--perfil-navegador", type=Path, default=None, help=f"pasta do perfil (padrão {PASTA_PERFIL_PADRAO})")
     p.set_defaults(func=cmd_login_gupy, copiloto_cfg=None)
 
@@ -492,17 +880,68 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--filtros", type=Path, default=RAIZ_PROJETO / "filtros.yaml")
     p.add_argument("--custos", type=Path, default=RAIZ_PROJETO / "custos.yaml")
     p.add_argument("--respostas", type=Path, default=RAIZ_PROJETO / "respostas.yaml")
-    p.set_defaults(func=cmd_candidatar, fetch=None, copiloto_cfg=None)
+    p.add_argument("--sem-log", action="store_true",
+                   help="não grava o log local de depuração (~/.local/share/bot-vagas/logs/candidatar-*.jsonl)")
+    p.add_argument("--notificacao", type=Path, default=None, help="config do ntfy (padrão notificacao.yaml)")
+    p.set_defaults(func=cmd_candidatar, fetch=None, copiloto_cfg=None, notificador=None)
 
     p = sub.add_parser("marcar", help="atualiza só o status de uma vaga: você diz quando enviou/desistiu")
     _opcoes_comuns(p)
     p.add_argument("alvo", metavar="CHAVE|URL")
-    p.add_argument("status", choices=STATUS_MANUAIS)
+    p.add_argument("status", choices=STATUS_MANUAIS + ("fila",),
+                   help="fila = devolve ao modo automático (volta a 'nova'; só se passou no filtro)")
     p.set_defaults(func=cmd_marcar)
+
+    def _opcoes_automatico(p):
+        p.add_argument("--automacao", type=Path, default=None, help="config do modo automático (padrão automacao.yaml)")
+        p.add_argument("--filtros", type=Path, default=RAIZ_PROJETO / "filtros.yaml")
+        p.add_argument("--perfil", type=Path, default=PERFIL_PADRAO)
+        p.add_argument("--respostas", type=Path, default=RAIZ_PROJETO / "respostas.yaml")
+        p.add_argument("--custos", type=Path, default=RAIZ_PROJETO / "custos.yaml")
+        p.add_argument("--saida", type=Path, default=SAIDA_PADRAO)
+        p.add_argument("--perfil-navegador", type=Path, default=None)
+        p.add_argument("--sem-log", action="store_true", help="não grava o log local de depuração")
+        p.add_argument("--notificacao", type=Path, default=None, help="config do ntfy (padrão notificacao.yaml)")
+
+    p = sub.add_parser("rodar", help="rodada diária (o que o timer executa): buscar + filtrar + modo automático (se ativo)")
+    _opcoes_comuns(p)
+    p.add_argument("--fontes", type=Path, default=RAIZ_PROJETO / "fontes.yaml")
+    _opcoes_automatico(p)
+    p.set_defaults(func=cmd_rodar, http_factory=None, notificador=None, client_factory=None, copiloto_cfg=None,
+                   simular=False, limite=None)
+
+    p = sub.add_parser("automatico", help="candidata-se SOZINHO às vagas da Gupy (simulação ou envio, ver automacao.yaml)")
+    _opcoes_comuns(p)
+    _opcoes_automatico(p)
+    p.add_argument("--agora", action="store_true", help="ignora a janela de horário de automacao.yaml")
+    p.add_argument("--simular", action="store_true", help="força simulação mesmo com modo: envio")
+    p.add_argument("--limite", type=int, default=None, help="no máximo N vagas nesta execução")
+    p.set_defaults(func=cmd_automatico, notificador=None, client_factory=None, copiloto_cfg=None)
+
+    p = sub.add_parser("senha-gupy", help="guarda o login e a senha da Gupy no chaveiro do sistema (modo automático)")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--apagar", action="store_true", help="apaga o login e a senha guardados")
+    g.add_argument("--verificar", action="store_true", help="só diz se há algo guardado (não mostra)")
+    p.set_defaults(func=cmd_senha_gupy)
+
+    p = sub.add_parser("parar", help="botão PARAR: cria o arquivo PARAR (interrompe qualquer execução)")
+    p.set_defaults(func=cmd_parar)
+    p = sub.add_parser("retomar", help="apaga o arquivo PARAR")
+    p.set_defaults(func=cmd_retomar)
+
+    p = sub.add_parser("gerar-timer", help="gera (NÃO instala) bot-vagas.service/.timer de systemd --user")
+    p.add_argument("--saida", type=Path, default=RAIZ_PROJETO / "systemd")
+    p.add_argument("--horario", default="14:00", help="HH:MM (padrão 14:00)")
+    p.set_defaults(func=cmd_gerar_timer)
+
+    p = sub.add_parser("testar-notificacao", help="envia um aviso genérico de teste pelo ntfy.sh (se ativo)")
+    p.add_argument("--notificacao", type=Path, default=None)
+    p.set_defaults(func=cmd_testar_notificacao, notificador=None)
     return parser
 
 
-def main(argv: list[str] | None = None, *, client_factory=None, fetch=None, copiloto_cfg=None) -> int:
+def main(argv: list[str] | None = None, *, client_factory=None, fetch=None, copiloto_cfg=None, http_factory=None,
+         notificador=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     # compatibilidade com a Etapa 1: sem subcomando, gera o currículo
     if not argv or argv[0] not in SUBCOMANDOS and argv[0] not in ("-h", "--help"):
@@ -510,13 +949,26 @@ def main(argv: list[str] | None = None, *, client_factory=None, fetch=None, copi
     parser = construir_parser()
     args = parser.parse_args(argv)
     comando = getattr(args, "comando", None)
-    if comando in ("avaliar", "preparar") and client_factory is not None:
+    if comando in ("avaliar", "preparar", "automatico", "rodar") and client_factory is not None:
         args.client_factory = client_factory  # injeção para testes; nunca usada em produção
     if comando in ("preparar", "candidatar") and fetch is not None:
         args.fetch = fetch  # injeção para testes: nunca abre o Playwright
-    if comando in ("candidatar", "login-gupy") and copiloto_cfg is not None:
+    if comando in ("candidatar", "login-gupy", "automatico", "rodar") and copiloto_cfg is not None:
         args.copiloto_cfg = copiloto_cfg  # injeção SÓ para testes (headless, loopback, perfil temporário)
-    return args.func(args)
+    if comando in ("buscar", "rodar") and http_factory is not None:
+        args.http_factory = http_factory  # injeção para testes: sem rede
+    if notificador is not None and hasattr(args, "notificador"):
+        args.notificador = notificador  # injeção para testes: nada sai para o ntfy
+    try:
+        if comando in RESPEITAM_PARAR:
+            parada.verificar()
+        return args.func(args)
+    except parada.ParadaPedida as e:
+        print(str(e), file=sys.stderr)
+        return SAIDA_PARADO
+    except KeyboardInterrupt:
+        print("\ninterrompido (Ctrl+C).", file=sys.stderr)
+        return SAIDA_INTERROMPIDO
 
 
 if __name__ == "__main__":

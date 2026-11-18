@@ -1,0 +1,11 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fixture modo automático — não é a Gupy</title>
+<script>
+  // como o /apply da v(dev): ainda no carregamento, abre uma aba nova com o formulário e fecha a aba original
+  const w = window.open('about:blank', '_blank');
+  w.location.href = location.origin + '/passo1.html?prox=passo2_curto.html';
+  window.close();
+</script>
+</head><body>
+<script>for (let t = Date.now(); Date.now() - t < 1500;) {}</script>
+<h1>Carregando candidatura…</h1>
+</body></html>

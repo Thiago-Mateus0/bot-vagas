@@ -1,0 +1,16 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fixture modo automático — não é a Gupy</title></head><body>
+<h2>Perguntas da empresa</h2>
+<label for="porque">Por que você quer trabalhar conosco? *</label>
+<textarea id="porque" name="porque" required></textarea>
+<label><input id="lgpd" type="checkbox" name="lgpd" required> Li e aceito a Política de Privacidade (LGPD) *</label>
+<label><input id="mkt" type="checkbox" name="mkt"> Quero receber novidades e ofertas por e-mail</label>
+<p id="erro"></p>
+<button id="enviar" onclick="enviar()">Enviar candidatura</button>
+<script>
+function enviar() {
+  if (!document.getElementById('porque').value || !document.getElementById('lgpd').checked) {
+    document.getElementById('erro').textContent = 'Responda e aceite os termos'; return; }
+  location.href = 'sucesso.html?mkt=' + (document.getElementById('mkt').checked ? 1 : 0);
+}
+</script>
+</body></html>

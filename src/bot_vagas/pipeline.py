@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from typing import Any
 
+from . import parada
 from .avaliador import ErroAvaliacao, avaliar_vaga
 from .banco import STATUS, Banco
 from .filtro import Filtros, avaliar_palavras_chave
@@ -48,6 +49,7 @@ def buscar(fontes: list[Fonte], http: ClienteHTTP, banco: Banco, log=print) -> d
     `fonte.alarmes`); a CLI devolve código de saída 1 quando há algum."""
     total = {"baixadas": 0, "novas": 0, "fontes_com_erro": 0, "alarmes": 0}
     for fonte in fontes:
+        parada.verificar()  # botão PARAR: interrompe entre uma fonte e outra
         rotulo = f"{fonte.nome}:{getattr(fonte, 'token', None) or getattr(fonte, 'empresa', None) or ''}"
         try:
             vagas = fonte.buscar(http)
@@ -73,6 +75,7 @@ def filtrar(banco: Banco, filtros: Filtros, log=print) -> dict[str, int]:
     Vagas já filtradas não são refiltradas."""
     total = {"passaram": 0, "bloqueadas": 0}
     for row in banco.listar("nova"):
+        parada.verificar()
         detalhes = json.loads(row["detalhes"]) if row["detalhes"] else {}
         if detalhes.get("filtro") == "passou":
             continue  # já filtrada antes
@@ -99,6 +102,7 @@ def refiltrar(banco: Banco, filtros: Filtros, log=print) -> dict[str, int]:
     Não faz chamadas ao modelo nem à rede."""
     total = {"bloqueada_para_nova": 0, "nova_para_bloqueada": 0, "iguais": 0, "ignoradas_com_nota": 0}
     for row in banco.listar(STATUS):
+        parada.verificar()
         if row["nota"] is not None or row["status"] not in ("nova", "bloqueada"):
             total["ignoradas_com_nota"] += 1
             continue
@@ -143,6 +147,7 @@ def avaliar(perfil: Perfil, banco: Banco, filtros: Filtros, client: ClienteMensa
     if limite is not None:
         pendentes = pendentes[:limite]
     for row in pendentes:
+        parada.verificar()  # antes de cada chamada paga
         try:
             contador.exigir_orcamento()
         except TetoAtingido as e:

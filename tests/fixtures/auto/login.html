@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Login (fixture) — não é a Gupy</title></head>
+<body>
+<script>
+  window.__eventos = [];
+  document.addEventListener('click', e => window.__eventos.push('click'), true);
+  document.addEventListener('submit', e => { e.preventDefault(); window.__eventos.push('submit'); }, true);
+</script>
+<h1>Entrar</h1>
+<form id="login">
+  <label for="email">E-mail</label>
+  <input id="email" name="email" type="email" required>
+  <label for="senha">Senha</label>
+  <input id="senha" name="password" type="password" required>
+  <label for="captcha">Digite o código (captcha)</label>
+  <input id="captcha" name="captcha" type="text">
+  <label for="cidade">Cidade</label>
+  <input id="cidade" name="cidade" type="text">
+  <button type="submit">Entrar</button>
+</form>
+</body></html>

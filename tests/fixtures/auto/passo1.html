@@ -1,0 +1,17 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fixture modo automático — não é a Gupy</title></head><body>
+<h2>Seus dados</h2>
+<label for="cidade">Cidade *</label><input id="cidade" name="cidade" required>
+<label for="pretensao">Pretensão salarial (R$) *</label><input id="pretensao" name="salario" required>
+<label for="cv">Anexe seu currículo *</label><input id="cv" type="file" name="curriculo" required>
+<p id="erro" style="color:red"></p>
+<button id="proximo" onclick="avancar()">Próximo</button>
+<script>
+function avancar() {
+  const ok = document.getElementById('cidade').value && document.getElementById('pretensao').value &&
+             document.getElementById('cv').files.length === 1;
+  if (!ok) { document.getElementById('erro').textContent = 'Preencha os campos obrigatórios'; return; }
+  const prox = new URLSearchParams(location.search).get('prox') || 'passo2.html';
+  location.href = prox;
+}
+</script>
+</body></html>

@@ -1,6 +1,6 @@
 # Bot de candidaturas — requisitos
 
-Status: levantamento concluído, nada construído ainda. Data: 2026-11-11.
+Status: levantamento de 2026-11-11; construção das etapas 1–5 concluída em 2026-11-16 (ver §18 e HANDOFF.md).
 O Fable low é usado só para CONSTRUIR o bot. O modelo que o bot usa em produção é outro (Haiku 5.5).
 
 ## 1. Objetivo
@@ -112,3 +112,34 @@ Cada etapa termina com testes e com Thiago conferindo o resultado antes de passa
 ## 17. Decisões em aberto
 - Nota de corte final (ajustada após a primeira semana de simulação).
 - Lista exata de palavras-chave de bloqueio e pontuação (refinar com vagas reais).
+
+## 18. Estado da implementação (2026-11-16)
+- **Autonomia (§4) — decisão de 2026-11-16 (substitui a anterior):** envio 100% AUTOMÁTICO, risco de banimento
+  aceito. O bot marca termos/LGPD obrigatórios e responde perguntas abertas com o Haiku (checado pelo verificador de
+  fatos). Primeira semana em simulação (§15.1). O copiloto semi-automático continua disponível.
+- **Sites (§3):** Gupy automática implementada. LinkedIn e Indeed: aprovados pelo Thiago, próxima etapa (depois da
+  semana de simulação da Gupy, conforme §15.3). Greenhouse/Lever só como fonte de vagas. velrino/jobs (GitHub
+  Issues) como fonte de vagas desde 2026-11-17: as da Gupy entram no automático, as demais ficam para o Thiago.
+- **Limites (§14/§15.8):** limite diário e por site, janela 14h–17h e pausas aleatórias em automacao.yaml.
+- **Screenshot (§15.6):** saida/capturas/ (antes de enviar e da confirmação), ligado ao registro da vaga.
+- **Execução (§9):** `bot-vagas rodar` = buscar + filtrar (sem API paga, sem envio). Arquivos `systemd --user` gerados
+  em `systemd/` (14h, `Persistent=true`); instalar é com o Thiago (README).
+- **Botão de parada (§15.5):** arquivo `PARAR` (`bot-vagas parar`/`retomar` ou botões do painel); interrompe qualquer
+  execução no próximo ciclo e impede novas.
+- **Aviso no celular (§15.7):** ntfy.sh opcional, desligado por padrão, só textos fixos sem dados pessoais
+  (login/captcha no copiloto, bloqueio/mudança de formato de fonte, teto de gasto).
+- **Login/captcha (§10):** o copiloto avisa "PRECISA DE LOGIN" (uma vez por mudança de página) e espera; nunca toca
+  em login, senha, e-mail ou captcha.
+- **Log de depuração do copiloto:** local, 0600, sem valores pessoais; `--sem-log` desliga.
+- **Login por provedor (§10) — 2026-11-17:** a Gupy usa "Entrar com LinkedIn"; com a sessão do LinkedIn no perfil
+  do bot o fluxo passa sozinho. Se a sessão cair, o bot para e avisa (opção B, em vigor). Clicar em "Entrar" com
+  a senha que o Chromium preencheu (opção A) depende de decisão do Thiago após a semana de simulação, com base
+  no histórico de quedas (`sessoes.jsonl`). Em nenhum caso o bot lê, digita ou guarda senha.
+  Na tela de login da própria Gupy, com `entrar_com_linkedin: true`, o bot clica só no botão "LinkedIn"
+  (escolha do provedor, sem credencial).
+  DECISÃO 2026-11-17 (final): LinkedIn abandonado (sessão caía em ~1 h) e senha salva no Chromium não serve
+  (não salva/preenche por subdomínio de empresa). O bot DIGITA login e senha da Gupy guardados no chaveiro
+  do sistema (`bot-vagas senha-gupy`, opção `digitar_senha_gupy`): só em gupy.io, 1 vez por rodada; código,
+  verificação ou captcha => para e avisa. Login/senha nunca em arquivo, log, banco ou modelo.
+- Ainda não implementado: LinkedIn e Indeed (§3).
+

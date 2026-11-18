@@ -112,3 +112,8 @@ progress.barra.aviso { accent-color: var(--aviso); }
 progress.barra.aviso::-webkit-progress-value, progress.barra.aviso::-moz-progress-bar { background: var(--aviso); }
 progress.barra.erro { accent-color: var(--erro); }
 progress.barra.erro::-webkit-progress-value, progress.barra.erro::-moz-progress-bar { background: var(--erro); }
+
+/* botão PARAR (única ação que escreve algo: o arquivo PARAR) */
+.botao-parar { margin: 0; }
+.botao-parar button.parar { background: var(--erro); border-color: var(--erro); font-weight: 700; }
+.botao-parar button.retomar { background: transparent; color: var(--erro); border-color: var(--erro); font-weight: 700; }

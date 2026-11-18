@@ -15,3 +15,15 @@ from bot_vagas.perfil import PERFIL_PADRAO, carregar_perfil  # noqa: E402
 @pytest.fixture(scope="session")
 def perfil():
     return carregar_perfil(PERFIL_PADRAO)
+
+
+@pytest.fixture(autouse=True)
+def _isolar_arquivos_locais(tmp_path_factory, monkeypatch):
+    """Nenhum teste toca o PARAR do projeto, o notificacao.yaml/automacao.yaml reais (nada de ntfy nem de
+    candidatura de verdade) nem a pasta real de logs do copiloto em ~/.local/share/bot-vagas."""
+    base = tmp_path_factory.mktemp("isolado")
+    monkeypatch.setenv("BOT_VAGAS_PARAR", str(base / "PARAR"))
+    monkeypatch.setenv("BOT_VAGAS_NOTIFICACAO", str(base / "notificacao-inexistente.yaml"))
+    monkeypatch.setenv("BOT_VAGAS_LOGS", str(base / "logs"))
+    monkeypatch.setenv("BOT_VAGAS_AUTOMACAO", str(base / "automacao-inexistente.yaml"))  # nunca o automacao.yaml real
+    return base
