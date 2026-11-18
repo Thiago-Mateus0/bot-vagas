@@ -1,6 +1,7 @@
 # Bot de candidaturas — requisitos
 
-Status: levantamento concluído, nada construído ainda. Data: 2026-11-11.
+Status: etapas 1 a 5 construídas (envio sempre manual, pelo copiloto). Atualizado em 2026-11-18; ver HANDOFF.md e README.md.
+Mudança de decisão já registrada no HANDOFF: o envio NÃO é automático (§4, §15): o bot prepara e preenche, Thiago clica em Enviar.
 O Fable low é usado só para CONSTRUIR o bot. O modelo que o bot usa em produção é outro (Haiku 5.5).
 
 ## 1. Objetivo
@@ -108,6 +109,12 @@ Painel web local: vaga, link, nota, currículo usado, status, gasto acumulado.
 5. Agendamento, botão de parada e notificações.
 6. LinkedIn e Indeed, só se tudo acima estiver estável.
 Cada etapa termina com testes e com Thiago conferindo o resultado antes de passar para a próxima.
+
+## 16b. Etapa 5 (concluída em 2026-11-18)
+- Agendamento: `bot-vagas gerar-timer` gera `bot-vagas.service`/`.timer` (14h, Persistent=true); a rodada agendada
+  (`bot-vagas rodar`) só busca e filtra, sem API paga e sem candidatura. Instalação fica com o Thiago (README).
+- Botão de parada: arquivo `PARAR` (CLI `parar`/`retomar`, botão no painel).
+- Notificação: ntfy.sh opcional, mensagens fixas sem dados pessoais (login pendente, parado, alarme, rodada, erro).
 
 ## 17. Decisões em aberto
 - Nota de corte final (ajustada após a primeira semana de simulação).

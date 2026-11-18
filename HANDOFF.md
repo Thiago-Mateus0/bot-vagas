@@ -3,35 +3,36 @@
 Leia primeiro: `REQUISITOS.md` (decisões) e este arquivo. Responda ao Thiago em português.
 Ele é estudante do 2º semestre de CS: ao entregar trabalho, diga o que ele deve conferir pessoalmente.
 
-## Estado
-- Python 3.12, venv em `.venv/`. Testes: `.venv/bin/pytest -q` -> 238 passam (verificado em 2026-11-16).
+## Estado (atualizado em 2026-11-18)
+- Python 3.12, venv em `.venv/`. Testes: `.venv/bin/pytest -q` -> 280 passam (verificado em 2026-11-18, com e sem
+  `perfil.yaml`, num clone limpo). Obs.: o Playwright do pip precisa do Chromium da MESMA versão
+  (`.venv/bin/playwright install chromium`).
 - Pronto: perfil + gerador de currículo PT/EN (1 página) + verificador de fatos; filtro (só estágio/trainee,
   remoto OU Maceió/AL); fontes Greenhouse/Lever/Gupy (busca pública do portal); avaliador e plano com Haiku 5.5
-  (travados atrás de `--real`); contador de gasto (teto US$ 3/mês); painel local somente leitura;
-  `preparar <url>` (pacote de candidatura, não envia); copiloto semi-automático da Gupy
-  (`login-gupy`, `candidatar`, `marcar`) — NUNCA clica em nada, Thiago clica e envia.
+  (travados atrás de `--real`); contador de gasto (teto US$ 3/mês); painel local; `preparar <url>`; copiloto
+  semi-automático da Gupy (`login-gupy`, `candidatar`, `marcar`) — NUNCA clica em nada, Thiago clica e envia.
+- Novo em 2026-11-18:
+  - Copiloto encerra limpo ao fechar a janela, Ctrl+C, SIGTERM/SIGHUP ou PARAR: sempre imprime resumo e grava
+    `detalhes.assistencia` (com `encerramento`). Causa do travamento antigo: `time.sleep` não processa eventos do
+    Playwright (fechamento nunca percebido) e um KeyboardInterrupt dentro do Playwright quebrava o despachante
+    (ctx.close() girava para sempre). Agora: espera com `ctx.wait_for_event("close")`, sinais só ligam uma flag,
+    fechamento com prazo (setitimer). Testado com sinal real no grupo de processos e Chromium visível sob Xvfb.
+  - Perfil do navegador em uso -> mensagem curta em português, código 3, status da vaga restaurado.
+  - Log de depuração `~/.local/share/bot-vagas/logs/candidatar-*.jsonl` (0700/0600), sem valores; `--sem-log`.
+  - Aviso "PRECISA DE LOGIN" uma vez por mudança de página, por aba.
+  - Bug corrigido: `Copiloto._pular` era chamado mas não existia (cada campo pulado virava AttributeError e aviso
+    repetido a cada varredura).
+  - Botão PARAR (`parada.py`): `bot-vagas parar|retomar`, botão no painel (POST com checagem de Origin), checado
+    entre fontes/vagas e a cada ciclo do copiloto; comandos de trabalho não começam com PARAR (código 4).
+  - ntfy.sh opcional (`notificacao.py`, `notificacao.yaml` fora do git): só mensagens fixas; desligado por padrão.
+  - `bot-vagas rodar` (buscar + filtrar, sem API paga) e `bot-vagas gerar-timer` (gera, não instala, o timer 14h).
+  - README.md de uso.
 - Uso real até agora: 1 candidatura enviada (CCEE, estágio Governança de TI), marcada `enviada`.
 - Nenhuma chamada paga à API feita ainda.
 
-## Pendências (em ordem)
-1. **Corrigir o copiloto** (src/bot_vagas/copiloto.py, cli.py). Um agente foi cortado por limite de uso no meio disso.
-   Estado do código: provavelmente intacto (238 testes passam), mas a correção NÃO foi concluída. Problemas reais vistos
-   na primeira execução com a Gupy de verdade:
-   a) Fechar a janela do Chromium NÃO encerra `candidatar`: fica preso em `time.sleep` e nunca imprime o resumo nem grava
-      `detalhes.assistencia`. Ctrl+C gera traceback e também não grava. Corrigir: detectar fechamento do contexto/páginas
-      (evento close, TargetClosedError), tratar SIGINT/SIGTERM, e SEMPRE imprimir resumo + gravar (try/finally).
-      Não marcar `enviada` automaticamente (isso é do `marcar`).
-   b) Perfil do navegador já em uso (Chromium aberto de outra execução) -> hoje traceback enorme; mostrar UMA mensagem
-      clara em português e sair com código != 0 (vale para `login-gupy` e `candidatar`).
-   c) Log local de depuração (~/.local/share/bot-vagas/logs/candidatar-<data>.jsonl, 0600): por campo visto, rótulo/tipo,
-      categoria atribuída, preenchido/pendente/pulou e motivo. NUNCA valores, senhas, e-mails, cookies ou texto da vaga.
-      `--sem-log` desliga. Testar que valores fictícios do respostas.yaml não aparecem no arquivo.
-   d) Aviso "PRECISA DE LOGIN" deve aparecer uma vez por mudança de página, não a cada polling.
-2. Botão PARAR (arquivo `PARAR` e/ou botão no painel) que interrompe qualquer execução.
-3. Notificação opcional via ntfy.sh quando o copiloto/bot pausar (só texto genérico, sem dados pessoais).
-4. Agendamento: gerar (NÃO instalar) arquivos de `systemd --user` timer às 14h com `Persistent=true` e documentar como
-   instalar. Instalar no PC do Thiago é com ele.
-5. README curto de uso (comandos, primeira execução, o que conferir).
+## Próximos passos sugeridos (depois dos itens [Thiago])
+1. Calibrar `PADROES_CAMPOS` do copiloto com o log de depuração da próxima candidatura real.
+2. Calibrar a nota de corte (REQUISITOS §17) depois de ~30 vagas avaliadas, quando o Thiago autorizar `--real`.
 - FORA de escopo por decisão do Thiago/risco: LinkedIn e Indeed; envio automático sem clique; resolver captcha.
 
 ## Regras que valem sempre
@@ -52,16 +53,16 @@ página pública de busca (rota não documentada, pode mudar: o bot avisa e para
 ## Definição de pronto (o agente só encerra quando TODOS os itens abaixo estiverem `[x]`)
 Marque `[x]` neste arquivo ao concluir cada item (com teste e verificação feitos por você). Itens `[Thiago]` não contam:
 dependem dele (PC/conta dele) e ficam documentados no README.
-- [ ] Copiloto: fechar a janela do Chromium ou Ctrl+C encerra limpo, imprime resumo e grava `detalhes.assistencia` (pendência 1a), com testes
-- [ ] Copiloto: perfil do navegador em uso -> mensagem clara em português, sem traceback, saída != 0 (1b), com testes
-- [ ] Copiloto: log local de depuração 0600 sem valores pessoais, `--sem-log` (1c), com teste de não vazamento
-- [ ] Copiloto: aviso "PRECISA DE LOGIN" uma vez por mudança de página (1d)
-- [ ] Botão PARAR (arquivo `PARAR` e/ou painel) interrompe qualquer execução, com testes
-- [ ] Notificação opcional ntfy.sh (texto genérico, sem dados pessoais), desligada por padrão, com testes
-- [ ] Arquivos de `systemd --user` timer às 14h (`Persistent=true`) gerados e documentados (NÃO instalar)
-- [ ] README de uso: instalação num clone limpo (usar `perfil.example.yaml`/`respostas.example.yaml`), comandos, primeira execução, o que conferir
-- [ ] Verificação final: `.venv/bin/pytest -q` todos passando COM e SEM `perfil.yaml`; grep confirmando que nada lê chave da API, não há `.click()`/submit no copiloto e nenhum dado pessoal em código/logs/fixtures
-- [ ] `HANDOFF.md` e `REQUISITOS.md` atualizados com o estado final
+- [x] Copiloto: fechar a janela do Chromium ou Ctrl+C encerra limpo, imprime resumo e grava `detalhes.assistencia` (pendência 1a), com testes
+- [x] Copiloto: perfil do navegador em uso -> mensagem clara em português, sem traceback, saída != 0 (1b), com testes
+- [x] Copiloto: log local de depuração 0600 sem valores pessoais, `--sem-log` (1c), com teste de não vazamento
+- [x] Copiloto: aviso "PRECISA DE LOGIN" uma vez por mudança de página (1d)
+- [x] Botão PARAR (arquivo `PARAR` e/ou painel) interrompe qualquer execução, com testes
+- [x] Notificação opcional ntfy.sh (texto genérico, sem dados pessoais), desligada por padrão, com testes
+- [x] Arquivos de `systemd --user` timer às 14h (`Persistent=true`) gerados e documentados (NÃO instalar)
+- [x] README de uso: instalação num clone limpo (usar `perfil.example.yaml`/`respostas.example.yaml`), comandos, primeira execução, o que conferir
+- [x] Verificação final: `.venv/bin/pytest -q` todos passando COM e SEM `perfil.yaml`; grep confirmando que nada lê chave da API, não há `.click()`/submit no copiloto e nenhum dado pessoal em código/logs/fixtures
+- [x] `HANDOFF.md` e `REQUISITOS.md` atualizados com o estado final
 - [ ] [Thiago] Instalar o timer no PC dele
 - [ ] [Thiago] Fazer a próxima candidatura real com o copiloto e mostrar o log de depuração
 - [ ] [Thiago] Definir o teto de gasto no painel da Anthropic antes de qualquer `--real`
