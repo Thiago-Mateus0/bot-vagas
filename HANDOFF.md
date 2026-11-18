@@ -59,7 +59,7 @@ dependem dele (PC/conta dele) e ficam documentados no README.
 - [ ] Botão PARAR (arquivo `PARAR` e/ou painel) interrompe qualquer execução, com testes
 - [ ] Notificação opcional ntfy.sh (texto genérico, sem dados pessoais), desligada por padrão, com testes
 - [ ] Arquivos de `systemd --user` timer às 14h (`Persistent=true`) gerados e documentados (NÃO instalar)
-- [ ] README de uso: instalação num clone limpo (usar `perfil.example.yaml`/`respostas.example.yaml`), comandos, primeira execução, o que conferir
+- [x] README de uso: instalação num clone limpo (usar `perfil.example.yaml`/`respostas.example.yaml`), comandos, primeira execução, o que conferir
 - [ ] Verificação final: `.venv/bin/pytest -q` todos passando COM e SEM `perfil.yaml`; grep confirmando que nada lê chave da API, não há `.click()`/submit no copiloto e nenhum dado pessoal em código/logs/fixtures
 - [ ] `HANDOFF.md` e `REQUISITOS.md` atualizados com o estado final
 - [ ] [Thiago] Instalar o timer no PC dele

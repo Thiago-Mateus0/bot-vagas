@@ -1,6 +1,14 @@
 # Bot de candidaturas — requisitos
 
-Status: levantamento concluído, nada construído ainda. Data: 2026-11-11.
+Status: levantamento de 2026-11-11; atualizado em 2026-11-18.
+
+> **Decisões atuais (2026-11-18) — valem sobre o texto original abaixo, mantido como histórico:**
+> - **Revisão humana em todo envio.** O bot busca, filtra, avalia e prepara; o copiloto preenche, mas Thiago revisa e
+>   clica em enviar. Nada de envio automático (substitui as seções 1 e 4: "totalmente automático", "5 a 10 por dia").
+> - **LinkedIn e Indeed fora de escopo** (os termos proíbem automação). Fontes: Greenhouse e Lever (APIs públicas) e a
+>   página pública de busca da Gupy, com pausa, teto de requisições, sem evasão de detecção e parada em bloqueio
+>   (substitui a seção 3).
+> - Sem captcha, sem proxy, sem stealth.
 O Fable low é usado só para CONSTRUIR o bot. O modelo que o bot usa em produção é outro (Haiku 5.5).
 
 ## 1. Objetivo
