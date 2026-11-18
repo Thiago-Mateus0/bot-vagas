@@ -1,0 +1,11 @@
+[Unit]
+Description=bot-vagas: rodada diaria as 14:00
+
+[Timer]
+OnCalendar=*-*-* 14:00:00
+# se o PC estava desligado/suspenso as 14:00, roda assim que voltar
+Persistent=true
+Unit=bot-vagas.service
+
+[Install]
+WantedBy=timers.target

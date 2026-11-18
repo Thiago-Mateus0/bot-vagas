@@ -31,7 +31,8 @@ sempre de uma pessoa.
 
 ## Por que semi-automático (copiloto) e não envio automático
 
-A ideia inicial era candidatura 100% automática. Ela foi descartada porque:
+A ideia inicial era candidatura 100% automática, e eu cheguei a construí-la (em simulação por padrão, com a senha só
+no chaveiro do sistema e parada obrigatória em captcha). Ela fica **fora deste repositório público**, porque:
 
 1. **Erro caro e irreversível:** um formulário enviado com uma resposta errada não pode ser desfeito.
 2. **Formulários variam muito:** perguntas abertas, testes e caixas de consentimento exigem julgamento humano.

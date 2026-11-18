@@ -54,8 +54,9 @@ acompanhada por uma pessoa.
 
 Resumo das escolhas; o raciocínio completo está em [docs/DECISOES.md](docs/DECISOES.md).
 
-- **Semi-automático de propósito.** Comecei planejando candidatura 100% automática e mudei de ideia: um envio errado
-  não tem volta, formulários exigem julgamento, e automação total levaria a contornar captcha e termos de uso.
+- **Semi-automático no repositório público.** Também construí um modo de envio 100% automático, mas ele fica num
+  repositório privado, por respeito aos termos de uso das plataformas: a Gupy não permite envio automatizado, um
+  envio errado não tem volta e formulários exigem julgamento.
   O copiloto não clica, não marca consentimento e não toca em login. Testes verificam que nenhum evento de clique
   ou submit é disparado.
 - **LLM sem alucinação no currículo.** O modelo só reorganiza fatos de um YAML estruturado. O verificador de fatos

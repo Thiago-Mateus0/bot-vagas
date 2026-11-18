@@ -1,0 +1,11 @@
+[Unit]
+Description=bot-vagas: rodada diaria (busca + filtro; nada e enviado)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/bot-vagas
+ExecStart=%h/bot-vagas/.venv/bin/python -m bot_vagas.cli rodar
+# a rodada termina sozinha (com pausas de alguns minutos entre candidaturas); isto so evita ficar presa
+TimeoutStartSec=4h
+Nice=10
+NoNewPrivileges=yes

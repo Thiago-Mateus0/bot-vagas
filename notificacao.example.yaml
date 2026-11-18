@@ -1,12 +1,12 @@
-# Aviso no celular via ntfy.sh (OPCIONAL). Copie para notificacao.yaml (fica FORA do git) e preencha.
-# Sem este arquivo, ou com topico: null, nenhuma notificação é enviada.
-#
-# 1. Instale o app "ntfy" no celular e assine um tópico com nome LONGO e ALEATÓRIO
-#    (no ntfy.sh público, quem souber o nome lê as mensagens). Ex.: bot-vagas-7f3k9q2m1x
-# 2. Ponha o mesmo nome aqui e rode: bot-vagas testar-notificacao
-#
-# As mensagens são fixas e genéricas (ex.: "O copiloto encontrou uma tela de login e está esperando você").
-# Nunca saem nome de empresa, cargo, link, respostas do formulário ou dados pessoais.
+# EXEMPLO. Copie para notificacao.yaml (fica FORA do git) para receber avisos no celular via ntfy.sh.
+# 1) Instale o app ntfy no celular e assine um tópico com nome DIFÍCIL de adivinhar
+#    (quem souber o nome do tópico lê os avisos; trate como senha).
+# 2) Copie este arquivo para notificacao.yaml, troque o tópico e mude ativo para true.
+# 3) Teste: bot-vagas testar-notificacao
+# Os avisos têm só texto genérico e fixo ("o copiloto pausou: a página pede login..."): nada de empresa, vaga,
+# link, nome, e-mail ou respostas.
 ntfy:
-  topico: null
+  ativo: false
   servidor: https://ntfy.sh
+  topico: troque-por-um-nome-longo-e-aleatorio
+  intervalo_min_s: 600   # não repete o mesmo aviso em menos de 10 minutos

@@ -20,7 +20,7 @@ class Vaga(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id_fonte: str = Field(min_length=1, description="ID da vaga na fonte de origem")
-    fonte: str = Field(min_length=1, description="greenhouse | lever | gupy")
+    fonte: str = Field(min_length=1, description="greenhouse | lever | gupy | velrino")
     empresa: str = Field(min_length=1)
     cargo: str = Field(min_length=1)
     localizacao: str = ""

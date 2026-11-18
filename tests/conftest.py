@@ -18,17 +18,11 @@ def perfil():
 
 
 @pytest.fixture(autouse=True)
-def _isolar_arquivos_reais(tmp_path_factory, monkeypatch):
-    """Nenhum teste toca no arquivo PARAR real, na pasta de logs/perfil do navegador reais nem no
-    notificacao.yaml real (que poderia mandar push de verdade)."""
+def _isolar_arquivos_locais(tmp_path_factory, monkeypatch):
+    """Nenhum teste toca o PARAR do projeto, o notificacao.yaml/automacao.yaml reais (nada de ntfy nem de
+    candidatura de verdade) nem a pasta real de logs do copiloto em ~/.local/share/bot-vagas."""
     base = tmp_path_factory.mktemp("isolado")
     monkeypatch.setenv("BOT_VAGAS_PARAR", str(base / "PARAR"))
-    monkeypatch.setattr("bot_vagas.copiloto.PASTA_LOGS_PADRAO", base / "logs")
-    monkeypatch.setattr("bot_vagas.copiloto.PASTA_PERFIL_PADRAO", base / "navegador")
-    monkeypatch.setattr("bot_vagas.notificacao.NOTIFICACAO_PADRAO", base / "notificacao.yaml")
-
-    def _sem_rede(*a, **k):
-        raise RuntimeError("rede proibida nos testes")
-
-    monkeypatch.setattr("bot_vagas.notificacao._enviar_http", _sem_rede)
-    yield base
+    monkeypatch.setenv("BOT_VAGAS_NOTIFICACAO", str(base / "notificacao-inexistente.yaml"))
+    monkeypatch.setenv("BOT_VAGAS_LOGS", str(base / "logs"))
+    return base

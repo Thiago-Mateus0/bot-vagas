@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from . import parada
 from .avaliador import Avaliacao, ErroAvaliacao, avaliar_vaga, delimitar_vaga
 from .banco import Banco, chave_vaga
 from .curriculo import CurriculoNaoCabeEmUmaPagina, gerar_curriculo
@@ -248,6 +249,7 @@ def preparar(
             raise ValueError("modo --real exige o contador de gasto")
         gravador = _Gravador(client)
         # (i) nota
+        parada.verificar()  # botão PARAR antes de cada chamada paga
         try:
             contador.exigir_orcamento()
             av, resposta = avaliar_vaga(perfil, vaga, gravador)
@@ -267,6 +269,7 @@ def preparar(
             log(f"AVISO: avaliação falhou: {e}", file=sys.stderr)
         # (ii) plano adaptado, verificado
         n_antes = len(gravador.respostas)
+        parada.verificar()
         try:
             contador.exigir_orcamento()
             plano = gerar_plano(perfil, delimitar_vaga(vaga), idioma_final, gravador)

@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import quote, urlsplit
 
+from .. import parada
 from . import Vaga
 from .http import ClienteHTTP, ErroHTTP, RespostaHTML
 from .texto import html_para_texto
@@ -141,6 +142,7 @@ class Gupy:
                 break
             pagina = 1
             while pagina <= self.max_paginas_por_termo:
+                parada.verificar()  # botão PARAR entre páginas
                 url = self.url(termo, pagina)
                 try:
                     resp = self._baixar(http, url)
