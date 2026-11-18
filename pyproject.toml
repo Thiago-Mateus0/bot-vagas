@@ -7,6 +7,7 @@ name = "bot-vagas"
 version = "0.1.0"
 description = "Assistente de candidaturas a estágio: busca, filtro, currículo adaptado por LLM com verificador de fatos e copiloto de formulário (Playwright)"
 requires-python = ">=3.12"
+license = {text = "MIT"}
 dependencies = [
     "pydantic>=2",
     "pyyaml>=6",

@@ -2,6 +2,7 @@
 
 [![testes](https://github.com/Thiago-Mateus0/bot-vagas/actions/workflows/testes.yml/badge.svg)](https://github.com/Thiago-Mateus0/bot-vagas/actions/workflows/testes.yml)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green)](LICENSE)
 
 Uma ferramenta que **encontra vagas de estágio, filtra por perfil, adapta o currículo com um LLM sem inventar
 nada e preenche os formulários de candidatura**. Quem confere e clica em "Enviar" é sempre uma pessoa.
@@ -118,6 +119,8 @@ requisitos e as regras (o que o bot pode e não pode fazer), revisei as entregas
 trabalho entre sessões estão em [docs/desenvolvimento/](docs/desenvolvimento/).
 
 ---
+
+Licença: [MIT](LICENSE).
 
 **In English:** a personal job-application assistant for internships. It fetches postings from public job boards,
 filters them with keyword rules and an optional LLM score (with a hard monthly budget), tailors a one-page résumé
