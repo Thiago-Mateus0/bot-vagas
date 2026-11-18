@@ -26,7 +26,7 @@ from test_candidatar import (  # noqa: F401  (fixtures)
 )
 
 RAIZ = Path(__file__).resolve().parents[1]
-SENSIVEIS = valores_sensiveis(RESPOSTAS_TESTE) + ["2500", "31/01/1999", "06/2029"]
+SENSIVEIS = valores_sensiveis(RESPOSTAS_TESTE) + ["1750", "31/01/1999", "06/2029"]
 
 
 def _fetch(u):

@@ -67,16 +67,49 @@ VAGAS = [
 ]
 
 
-def criar(destino: Path = DESTINO, gasto_percentual: float = 50.0) -> Path:
+# Vagas extras (também fictícias) usadas só nas imagens do README (`--vitrine`).
+VAGAS_VITRINE = [
+    dict(id_fonte="d7", fonte="gupy", empresa="Exemplo Saúde", cargo="Estágio em Automação com IA",
+         localizacao="Maceió - AL (híbrido)", remoto=False, url="https://exemplosaude.gupy.io/jobs/7",
+         descricao="Estágio híbrido. Python, automação de processos, integração com APIs de LLM.",
+         status="preparada", nota=8, motivo="Automação com LLM em Python; híbrido na cidade configurada.",
+         detalhes={"filtro": "passou", "pontos": 3, "termos": ["python", "automacao", "llm"],
+                   "avaliacao": {"nota": 8, "motivo": "Automação com LLM em Python; híbrido na cidade configurada.",
+                                 "pontos_de_match": ["Python", "Automação", "APIs de LLM"],
+                                 "requisitos_que_faltam": ["RPA"]},
+                   "preparacao": {"pdf": "saida/exemplo-saude-estagio-pt.pdf", "pacote": "saida/exemplo-saude-estagio.md",
+                                  "idioma": "pt", "plano": "adaptado", "filtro_diria": "passou", "real": True, "avisos": []}}),
+    dict(id_fonte="d8", fonte="gupy", empresa="Modelo Fintech", cargo="Estágio Desenvolvimento Backend",
+         localizacao="Remoto", remoto=True, url="https://modelofintech.gupy.io/jobs/8",
+         descricao="Estágio remoto. Node.js, PostgreSQL, filas.",
+         status="enviada", nota=8, motivo="Backend com PostgreSQL; remoto.",
+         detalhes={"filtro": "passou", "pontos": 2, "termos": ["backend", "postgresql"],
+                   "avaliacao": {"nota": 8, "motivo": "Backend com PostgreSQL; remoto.",
+                                 "pontos_de_match": ["PostgreSQL", "Backend"], "requisitos_que_faltam": ["Kafka"]},
+                   "assistencia": {"quando": "2026-11-17T17:20:00+00:00", "passos": 42, "pdf_anexado": True,
+                                   "preenchidos": [{"campo": "Cidade"}, {"campo": "Disponibilidade para início"},
+                                                   {"campo": "Nível de inglês"}, {"campo": "Anexe seu currículo"}],
+                                   "pendentes": [{"campo": "Por que você quer trabalhar aqui?",
+                                                  "motivo": "pergunta aberta/discursiva: responda você"},
+                                                 {"campo": "Li e aceito a política de privacidade",
+                                                  "motivo": "consentimento/aceite: só você marca"}],
+                                   "avisos": [], "encerramento": "janela fechada"},
+                   "marcacao": {"status": "enviada", "quando": "2026-11-17T17:25:00+00:00", "anterior": "em_candidatura"}}),
+]
+
+
+def criar(destino: Path = DESTINO, gasto_percentual: float = 50.0, vitrine: bool = False) -> Path:
     if destino.exists():
         destino.unlink()
     destino.parent.mkdir(parents=True, exist_ok=True)
     custos = carregar_custos(RAIZ / "custos.yaml")
     agora = datetime.now(timezone.utc)
     with Banco(destino) as banco:
-        banco.salvar_vagas([Vaga(**{k: v for k, v in d.items() if k in Vaga.model_fields}) for d in VAGAS])
+        # vitrine: sem a vaga de teste de XSS (d6), com duas vagas extras
+        vagas = [d for d in VAGAS if d["id_fonte"] != "d6"] + VAGAS_VITRINE if vitrine else VAGAS
+        banco.salvar_vagas([Vaga(**{k: v for k, v in d.items() if k in Vaga.model_fields}) for d in vagas])
         linhas = {r["id_fonte"]: r["chave"] for r in banco.listar()}
-        for d in VAGAS:
+        for d in vagas:
             banco.atualizar_status(linhas[d["id_fonte"]], d["status"], nota=d["nota"], motivo=d["motivo"],
                                    detalhes=json.dumps(d["detalhes"], ensure_ascii=False))
         # chamadas fictícias no mês atual, somando `gasto_percentual` do teto
@@ -96,7 +129,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gasto", type=float, default=50.0, help="percentual do teto já gasto (ex.: 85, 100)")
     ap.add_argument("--destino", type=Path, default=DESTINO)
+    ap.add_argument("--vitrine", action="store_true", help="dados para as imagens do README (sem a vaga de teste de XSS)")
     a = ap.parse_args()
-    caminho = criar(a.destino, a.gasto)
+    caminho = criar(a.destino, a.gasto, a.vitrine)
     print(f"banco de demonstração criado: {caminho}")
     print(f"suba o painel com: .venv/bin/python -m bot_vagas.cli painel --banco {caminho}")

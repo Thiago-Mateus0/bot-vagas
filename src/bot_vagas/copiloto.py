@@ -406,7 +406,9 @@ def escolher_opcao(valor: Any, opcoes: list[str]) -> int | None:
         if vn.isdigit():
             cands = [i for i, t in enumerate(textos) if re.search(rf"\b{re.escape(vn)}\b", t)]
         else:
-            cands = [i for i, t in enumerate(textos) if t in sinonimos]
+            cands = [i for i, t in enumerate(textos) if t == vn]  # o valor exato vence os sinônimos
+            if not cands:
+                cands = [i for i, t in enumerate(textos) if t in sinonimos]
             if not cands:
                 cands = [i for i, t in enumerate(textos) if any(re.search(rf"\b{re.escape(s)}\b", t) for s in sinonimos)]
             if not cands and len(vn) >= 4:  # parda/pardo, negra/negro...

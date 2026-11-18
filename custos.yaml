@@ -1,4 +1,4 @@
-# Contador de gasto (REQUISITOS.md, secao 8). Precos podem mudar: RECONFIRMAR em
+# Contador de gasto (docs/DECISOES.md, "Modelo e custo"). Precos podem mudar: RECONFIRMAR em
 # https://www.anthropic.com/pricing antes de ligar o modo --real.
 modelo: claude-haiku-5-5
 precos_usd_por_milhao:

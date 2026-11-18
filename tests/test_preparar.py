@@ -17,7 +17,7 @@ from bot_vagas.respostas import MARCA_NULO, carregar_respostas, tabela_respostas
 RAIZ = Path(__file__).resolve().parents[1]
 
 RESPOSTAS_TESTE = {
-    "pretensao_salarial": {"brl_mensal_minimo": 2500, "usd_mensal_minimo": None, "so_responder_quando_perguntado": True,
+    "pretensao_salarial": {"brl_mensal_minimo": 1750, "usd_mensal_minimo": None, "so_responder_quando_perguntado": True,
                            "observacao": "Aberto a negociar."},
     "disponibilidade": {"inicio": "imediata", "carga_horaria": "conforme a vaga", "turno_preferido": None},
     "tipo_contrato_aceito": ["estagio", "clt"],
@@ -238,7 +238,7 @@ def test_arquivo_sem_real_nao_chama_api_gera_pdf_neutro_e_pacote(ambiente, capsy
     assert f"| Turno preferido | **{MARCA_NULO}** |" in md
     assert f"| Possui CNH | **{MARCA_NULO}** |" in md
     assert "1999-01-31" in md  # dado pessoal só no arquivo local
-    assert "SÓ se o formulário perguntar" in md and "2500" in md
+    assert "SÓ se o formulário perguntar" in md and "1750" in md
 
     with Banco(ambiente.banco) as b:
         rows = b.listar("preparada")
@@ -316,7 +316,7 @@ def test_real_com_cliente_falso_gera_pdf_adaptado_de_1_pagina(ambiente, perfil, 
     # valores que também estão no perfil (ex.: "Maceió", "Brasil") entram no prompt legitimamente
     perfil_txt = json.dumps(perfil.model_dump(mode="json"), ensure_ascii=False)
     sens = [s for s in valores_sensiveis(RESPOSTAS_TESTE) if s not in perfil_txt and s not in VAGA_PT]
-    assert {"1999-01-31", "masculino", "parda", "2500", "2029-06"} <= set(sens)
+    assert {"1999-01-31", "masculino", "parda", "1750", "2029-06"} <= set(sens)
     codigo = cli.main(_argv(ambiente, "preparar", "--arquivo", str(ambiente.arquivo), "--empresa", "Acme", "--cargo",
                             "Estágio Backend", "--url", "https://ok.example/v", "--real"), client_factory=lambda: cliente)
     out = capsys.readouterr().out

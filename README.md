@@ -1,124 +1,126 @@
 # bot-vagas
 
-Bot pessoal de candidaturas a **estágio/trainee** (remoto ou Maceió/AL). Ele **busca e filtra** vagas,
-**gera o currículo** (PT/EN, 1 página, sem inventar nada) e, na Gupy, funciona como **copiloto**: abre a vaga
-num Chromium visível, preenche os campos que reconhece e anexa o PDF. **Quem clica em "Enviar" é sempre você.**
+[![testes](https://github.com/Thiago-Mateus0/bot-vagas/actions/workflows/testes.yml/badge.svg)](https://github.com/Thiago-Mateus0/bot-vagas/actions/workflows/testes.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 
-Decisões e regras: `REQUISITOS.md`. Estado do projeto: `HANDOFF.md`.
+Uma ferramenta que **encontra vagas de estágio, filtra por perfil, adapta o currículo com um LLM sem inventar
+nada e preenche os formulários de candidatura**. Quem confere e clica em "Enviar" é sempre uma pessoa.
 
-## Instalação (clone limpo, Linux, Python 3.12)
+Construí este projeto para resolver um problema meu: procurar estágio toma horas por semana, e quase todo esse
+tempo vai para tarefas repetitivas (ler vaga que não serve, digitar a mesma cidade em todo formulário).
 
-```bash
-git clone <este repositório> bot-vagas && cd bot-vagas
-python3.12 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
-.venv/bin/playwright install chromium        # navegador usado pelo copiloto e pelo gerador de PDF
+![O copiloto preenchendo um formulário de exemplo: campos em verde foram preenchidos pelo bot, em laranja ficam para a pessoa](docs/img/copiloto.gif)
 
-cp perfil.example.yaml perfil.yaml           # SEUS dados do currículo (fica fora do git)
-cp respostas.example.yaml respostas.yaml     # respostas fixas de formulário (fora do git)
-cp notificacao.example.yaml notificacao.yaml # opcional: aviso no celular (fora do git)
+*O copiloto num formulário de demonstração (portal fictício). Em verde, o que o bot preencheu; em laranja, o que
+ele deixa para a pessoa: pergunta aberta e consentimento. Ele nunca clica em nada.*
 
-.venv/bin/pytest -q                          # todos os testes devem passar (sem rede, sem API)
+## O que ele faz
+
+1. **Busca** vagas em fontes públicas (APIs do Greenhouse e do Lever, página de busca da Gupy).
+2. **Filtra** por palavras-chave (nível, local, área) e, opcionalmente, pede uma **nota de 0 a 10** a um LLM
+   (Claude Haiku), com teto de gasto mensal.
+3. **Adapta o currículo** para a vaga (PT ou EN, sempre 1 página). Um **verificador de fatos** rejeita qualquer
+   habilidade, empresa ou resultado que não esteja no perfil original.
+4. **Copiloto de formulário:** abre a vaga num navegador visível, preenche os campos que reconhece, anexa o PDF e
+   destaca o resto.
+5. **Painel local** com as vagas, os status, o histórico e o gasto com a API.
+
+![Painel local com vagas fictícias, notas, status e gasto do mês](docs/img/painel.png)
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+    F["Fontes públicas<br/>Greenhouse · Lever · Gupy"] --> B[buscar]
+    B --> DB[(SQLite)]
+    DB --> FA["filtrar<br/>palavras-chave"]
+    FA --> AV["avaliar<br/>nota do LLM (--real)"]
+    AV --> DB
+    DB --> P["painel<br/>FastAPI, só 127.0.0.1"]
+    DB --> PR["preparar<br/>currículo adaptado"]
+    PR --> VF{"verificador<br/>de fatos"}
+    VF -- aprovado --> PDF[PDF 1 página]
+    VF -- reprovado --> N[currículo neutro]
+    PDF --> C["candidatar<br/>copiloto Playwright"]
+    N --> C
+    C --> H(("pessoa confere<br/>e clica em Enviar"))
 ```
 
-Edite `perfil.yaml` e `respostas.yaml` com cuidado: **campo `null` = o bot não responde** e deixa para você.
+A rodada diária (`buscar` + `filtrar`) roda sozinha às 14h por um timer do systemd. A candidatura é sempre
+acompanhada por uma pessoa.
 
-## Primeira execução (passo a passo)
+## Decisões de engenharia
 
-```bash
-.venv/bin/bot-vagas curriculo                 # gera saida/curriculo-thiago-mateus-pt.pdf e -en.pdf
-.venv/bin/bot-vagas rodar                     # busca + filtro (sem API paga, nada é enviado)
-.venv/bin/bot-vagas listar --status nova      # vagas que passaram no filtro
-.venv/bin/bot-vagas painel                    # http://127.0.0.1:8765 (vagas, status, gasto, botão PARAR)
+Resumo das escolhas; o raciocínio completo está em [docs/DECISOES.md](docs/DECISOES.md).
 
-.venv/bin/bot-vagas login-gupy                # Chromium visível: VOCÊ faz login; feche a janela ao terminar
-.venv/bin/bot-vagas candidatar <link-da-vaga-na-gupy>   # copiloto: preenche/anexa/destaca; nunca clica
-# ... você confere tudo e clica em Enviar na própria Gupy ...
-.venv/bin/bot-vagas marcar <link-ou-chave> enviada      # só você diz quando enviou
-```
+- **Semi-automático de propósito.** Comecei planejando candidatura 100% automática e mudei de ideia: um envio errado
+  não tem volta, formulários exigem julgamento, e automação total levaria a contornar captcha e termos de uso.
+  O copiloto não clica, não marca consentimento e não toca em login. Testes verificam que nenhum evento de clique
+  ou submit é disparado.
+- **LLM sem alucinação no currículo.** O modelo só reorganiza fatos de um YAML estruturado. O verificador de fatos
+  compara cada termo gerado com o perfil e, se algo não existir lá, descarta a versão adaptada.
+- **Custo sob controle.** Nenhuma chamada paga acontece sem a flag `--real`. Há um contador próprio com teto de
+  US$ 3/mês, e o prompt fixo usa cache e esforço baixo.
+- **Privacidade.** Dados pessoais ficam só em arquivos locais fora do git e nunca vão para o modelo nem para os logs
+  (há testes de não vazamento).
+- **Segurança do painel.** Escuta só em loopback, valida o Host (DNS rebinding), escapa todo texto externo (XSS),
+  exige Origin local nos POSTs (CSRF) e usa CSP restritiva.
+- **Robustez.** Botão PARAR que interrompe qualquer execução; encerramento limpo com janela fechada, Ctrl+C ou
+  SIGTERM; detecção de mudança de formato nas fontes (o bot para e avisa, não contorna).
 
-## Comandos
+### Um bug que vale contar
 
-| Comando | O que faz |
-|---|---|
-| `curriculo [--idioma pt\|en\|ambos]` | gera o PDF base (1 página, conferido automaticamente) |
-| `rodar` | rodada diária: `buscar` + `filtrar`; notifica no celular se configurado. Usado pelo timer |
-| `buscar` / `filtrar [--refazer]` | as duas etapas separadas |
-| `avaliar --real` | nota do modelo (API **paga**). Sem `--real` recusa. Teto: `custos.yaml` |
-| `listar [--status ...]` | tabela das vagas |
-| `painel [--porta 8765]` | painel local (só 127.0.0.1) |
-| `preparar <url>` ou `preparar --arquivo vaga.txt --empresa X --cargo Y` | PDF + pacote de respostas de UMA vaga |
-| `login-gupy` | abre o Chromium com o perfil do bot para você logar |
-| `candidatar <url\|chave> [--pdf x.pdf] [--sem-log]` | copiloto da Gupy (detalhes abaixo) |
-| `marcar <url\|chave> enviada\|desistiu\|em_candidatura` | atualiza o status |
-| `parar [motivo]` / `retomar` | **botão PARAR** (arquivo `PARAR` na raiz do projeto) |
-| `gerar-timer [--hora 14:00]` | gera (não instala) o timer do systemd |
-| `testar-notificacao` | manda um push de teste pelo ntfy |
+No primeiro uso real, fechar a janela do navegador não encerrava o copiloto, e o Ctrl+C travava o programa. Eram
+duas causas:
 
-### Copiloto (`candidatar`)
+1. A espera usava `time.sleep`. Na API síncrona do Playwright, os eventos (como "a janela fechou") só são processados
+   durante uma chamada ao Playwright, então o fechamento nunca era percebido.
+2. O `KeyboardInterrupt` do Ctrl+C era levantado dentro do greenlet do Playwright e quebrava o laço interno dele.
+   Qualquer chamada seguinte, como `ctx.close()`, girava para sempre.
 
-- Abre a vaga num Chromium **visível** com o perfil `~/.local/share/bot-vagas/navegador` (0700, onde fica sua
-  sessão da Gupy). Você clica em "Candidatar-se", "Próximo" e "Enviar"; o bot só **preenche campos vazios** que
-  reconhece, **anexa o PDF** e **destaca** (contorno laranja) o que é com você.
-- Nunca toca em: login/senha/e-mail/captcha, caixas de consentimento/LGPD, perguntas abertas e testes.
-- Termina quando você **fecha a janela**, aperta **Ctrl+C**, o sistema manda **SIGTERM** ou o **PARAR** é ligado.
-  Em todos os casos imprime o **resumo** e grava a assistência no banco. Não marca `enviada` sozinho.
-- Se outra janela do bot (ex.: um `login-gupy` esquecido) estiver aberta: mensagem clara e código de saída 3.
-  Feche a outra janela e tente de novo.
-- **Log de depuração** (para calibrar o reconhecimento de campos): `~/.local/share/bot-vagas/logs/candidatar-*.jsonl`
-  (pasta 0700, arquivo 0600). Uma linha por campo visto: tipo, rótulo, categoria atribuída, preenchido/pendente/pulou e
-  motivo. **Nunca** grava valores digitados, valores do `respostas.yaml` (são trocados por `[omitido]`), senhas,
-  cookies ou query string de URL. `--sem-log` desliga.
-- Se aparecer tela de login: avisa **uma vez por mudança de página** (e manda push, se configurado).
+A correção espera com `wait_for_event("close")`, transforma os sinais em uma flag conferida a cada ciclo e fecha o
+navegador com prazo máximo. O teste de regressão manda um sinal real para o **grupo de processos**, como o
+terminal faz, e confere que o resumo é gravado.
 
-### Botão PARAR
+## Stack
 
-Qualquer um destes liga o PARAR: `bot-vagas parar`, botão **Parar tudo** no painel, ou `touch PARAR`.
-Enquanto o arquivo existir, `buscar`, `filtrar`, `avaliar`, `preparar`, `rodar`, `login-gupy` e `candidatar`
-não começam (código de saída 4), e os que estão rodando param no próximo ponto seguro (entre fontes, entre vagas,
-a cada ~1 s no copiloto). `listar`, `painel` e `marcar` continuam funcionando. Para liberar: `bot-vagas retomar`.
+Python 3.12 · Playwright · SQLite · FastAPI + Jinja2 (sem JavaScript) · SDK da Anthropic + pydantic · pypdf ·
+pytest · systemd timer · ntfy.sh
 
-### Notificação no celular (opcional)
-
-1. Instale o app **ntfy** e assine um tópico com nome longo e aleatório (quem souber o nome lê as mensagens).
-2. Ponha o nome em `notificacao.yaml` (`ntfy.topico`) e rode `bot-vagas testar-notificacao`.
-
-Mensagens fixas e genéricas: login pendente no copiloto, execução parada, alarme na busca, rodada concluída (só a
-quantidade de vagas), erro. Nunca saem empresa, cargo, link ou dados pessoais.
-
-## Agendamento (systemd --user, 14h)
+## Testes
 
 ```bash
-.venv/bin/bot-vagas gerar-timer               # escreve saida/systemd/bot-vagas.service e .timer
-mkdir -p ~/.config/systemd/user
-cp saida/systemd/bot-vagas.* ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now bot-vagas.timer
-systemctl --user list-timers bot-vagas.timer  # confira o próximo disparo
+.venv/bin/pytest -q     # 280 testes, sem rede e sem API paga
 ```
 
-- `Persistent=true`: se o PC estava desligado/suspenso às 14h, a rodada roda quando ligar.
-- Para rodar mesmo sem você logado: `loginctl enable-linger "$USER"`.
-- Testar agora: `systemctl --user start bot-vagas.service && journalctl --user -u bot-vagas -n 50`.
-- Desinstalar: `systemctl --user disable --now bot-vagas.timer`.
-- A rodada agendada só faz `buscar` + `filtrar`: **não chama a API paga e não se candidata**.
+Os testes rodam o navegador de verdade (headless) contra páginas de teste locais, usam clientes falsos no lugar
+da API do LLM e incluem testes de segurança (XSS, SSRF, CSRF) e de não vazamento de dados pessoais. O CI roda tudo
+a cada push.
 
-## O que conferir pessoalmente
+## Rodando
 
-- **Currículo gerado** (`saida/*.pdf`): telefone, e-mail, links e datas. O verificador de fatos barra invenções,
-  mas quem garante que o `perfil.yaml` está certo é você.
-- **`respostas.yaml`**: pretensão, disponibilidade, dados voluntários. Deixe `null` o que preferir responder na hora.
-- **Cada formulário antes de enviar**: o copiloto marca em verde o que preencheu e em laranja o que é com você.
-  Confira os campos verdes também.
-- **Primeiro uso do copiloto**: depois da candidatura, abra o log de depuração e veja quais campos ficaram como
-  "não reconhecido"; isso mostra o que falta ensinar ao bot.
-- **Timer**: confira com `systemctl --user list-timers` e, no primeiro dia, com `journalctl --user -u bot-vagas`.
-- **Antes de qualquer `--real`**: defina o teto de gasto no painel da Anthropic (o bot também tem o próprio teto
-  em `custos.yaml`, US$ 3/mês) e reconfirme os preços.
+```bash
+python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/playwright install chromium
+cp perfil.example.yaml perfil.yaml && cp respostas.example.yaml respostas.yaml
 
-## Privacidade e segurança
+.venv/bin/python demo/criar_demo.py --vitrine                 # dados fictícios para explorar o painel
+.venv/bin/bot-vagas painel --banco demo/vagas-demo.db         # http://127.0.0.1:8765
+```
 
-- Dados pessoais só em `perfil.yaml`, `respostas.yaml` e no perfil do navegador (todos fora do git).
-- O código nunca lê a chave da API (o SDK da Anthropic lê sozinho, e só com `--real`).
-- Sem evasão de detecção de automação, sem resolver captcha, sem LinkedIn/Indeed. Se a Gupy bloquear, o bot para e avisa.
-- `vagas.db` é o banco local; não edite à mão. Para ver o painel com dados fictícios: `.venv/bin/python demo/criar_demo.py`.
+O manual completo (comandos, copiloto, agendamento, notificações) está em [docs/USO.md](docs/USO.md). As imagens
+deste README são geradas por `demo/gerar_imagens.py`.
+
+## Como foi construído
+
+Desenvolvi o projeto usando agentes de código (Claude Code) como par de programação: eu defini o problema, os
+requisitos e as regras (o que o bot pode e não pode fazer), revisei as entregas e testei no uso real. As notas de
+trabalho entre sessões estão em [docs/desenvolvimento/](docs/desenvolvimento/).
+
+---
+
+**In English:** a personal job-application assistant for internships. It fetches postings from public job boards,
+filters them with keyword rules and an optional LLM score (with a hard monthly budget), tailors a one-page résumé
+with a fact checker that rejects anything not in the source profile, and fills application forms in a visible
+browser **without ever clicking submit**. Built with Python, Playwright, SQLite, FastAPI and the Anthropic SDK;
+280 offline tests, including security and data-leak checks.

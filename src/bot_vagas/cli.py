@@ -597,7 +597,7 @@ def cmd_testar_notificacao(args: argparse.Namespace) -> int:
 # --- montagem --------------------------------------------------------------
 
 def construir_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="bot-vagas", description="Bot de candidaturas (Etapas 1 a 3).")
+    parser = argparse.ArgumentParser(prog="bot-vagas", description="bot-vagas: busca, filtro, currículo e copiloto de candidaturas (nunca envia sozinho).")
     sub = parser.add_subparsers(dest="comando")
 
     p = sub.add_parser("curriculo", help="gera o currículo base em PDF (Etapa 1)")

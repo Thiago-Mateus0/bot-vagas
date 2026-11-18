@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from .perfil import Idioma, Perfil
 from .plano import PlanoAdaptacao
 
-# Termos que o perfil NÃO contém e que o modelo costuma inventar (REQUISITOS.md, seção 2).
+# Termos que o perfil NÃO contém e que o modelo costuma inventar (docs/DECISOES.md, "Escopo das vagas").
 TERMOS_PROIBIDOS: tuple[str, ...] = (
     "machine learning",
     "aprendizado de máquina",

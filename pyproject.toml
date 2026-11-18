@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bot-vagas"
 version = "0.1.0"
-description = "Bot de candidaturas a vagas - Etapa 1: perfil, gerador de curriculo e verificador de fatos"
+description = "Assistente de candidaturas a estágio: busca, filtro, currículo adaptado por LLM com verificador de fatos e copiloto de formulário (Playwright)"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2",

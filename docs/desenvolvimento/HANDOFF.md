@@ -1,6 +1,6 @@
 # HANDOFF — bot de candidaturas do Thiago (2026-11-16)
 
-Leia primeiro: `REQUISITOS.md` (decisões) e este arquivo. Responda ao Thiago em português.
+Leia primeiro: `docs/DECISOES.md` (decisões atuais) e este arquivo. Documento de trabalho para agentes de código. Responda ao Thiago em português.
 Ele é estudante do 2º semestre de CS: ao entregar trabalho, diga o que ele deve conferir pessoalmente.
 
 ## Estado (atualizado em 2026-11-18)
@@ -27,12 +27,12 @@ Ele é estudante do 2º semestre de CS: ao entregar trabalho, diga o que ele dev
   - ntfy.sh opcional (`notificacao.py`, `notificacao.yaml` fora do git): só mensagens fixas; desligado por padrão.
   - `bot-vagas rodar` (buscar + filtrar, sem API paga) e `bot-vagas gerar-timer` (gera, não instala, o timer 14h).
   - README.md de uso.
-- Uso real até agora: 1 candidatura enviada (CCEE, estágio Governança de TI), marcada `enviada`.
+- Uso real até agora: 1 candidatura enviada com o fluxo manual, marcada `enviada`.
 - Nenhuma chamada paga à API feita ainda.
 
 ## Próximos passos sugeridos (depois dos itens [Thiago])
 1. Calibrar `PADROES_CAMPOS` do copiloto com o log de depuração da próxima candidatura real.
-2. Calibrar a nota de corte (REQUISITOS §17) depois de ~30 vagas avaliadas, quando o Thiago autorizar `--real`.
+2. Calibrar a nota de corte (docs/DECISOES.md, "Em aberto") depois de ~30 vagas avaliadas, quando o Thiago autorizar `--real`.
 - FORA de escopo por decisão do Thiago/risco: LinkedIn e Indeed; envio automático sem clique; resolver captcha.
 
 ## Regras que valem sempre

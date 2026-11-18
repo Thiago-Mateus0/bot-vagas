@@ -1,6 +1,6 @@
 # Filtro por palavras-chave (fase A) e corte da nota do modelo (fase B).
 # Comparacao sempre em minusculas e sem acento, por palavra inteira (nao casa dentro de outra palavra).
-# EDITE conforme as vagas reais que aparecerem (REQUISITOS.md, secao 17).
+# EDITE conforme as vagas reais que aparecerem (docs/DECISOES.md, "Em aberto").
 
 # Nota minima (0-10) para a vaga ser "aprovada" na fase B.
 nota_de_corte: 7

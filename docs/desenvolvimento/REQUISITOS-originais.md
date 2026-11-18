@@ -1,3 +1,6 @@
+> Levantamento ORIGINAL (2026-11-11), mantido como histórico. Várias decisões mudaram depois
+> (ex.: o envio deixou de ser automático; LinkedIn e Indeed saíram do escopo). O que vale hoje está em `docs/DECISOES.md`.
+
 # Bot de candidaturas — requisitos
 
 Status: etapas 1 a 5 construídas (envio sempre manual, pelo copiloto). Atualizado em 2026-11-18; ver HANDOFF.md e README.md.
@@ -18,7 +21,7 @@ Achar vagas, adaptar o currículo de cada uma sem inventar nada e se candidatar 
 
 ## 3. Sites
 LinkedIn, Gupy, Indeed/Catho/InfoJobs, ATS de empresas (Greenhouse, Lever).
-Risco aceito: LinkedIn e Indeed proíbem automação; possível ban (conta secundária ou risco aceito).
+Risco aceito: LinkedIn e Indeed proíbem automação; possível bloqueio da conta. (Decisão revista depois: ambos ficaram fora do escopo.)
 
 ## 4. Autonomia e volume
 - Totalmente automático, sem revisão por candidatura.
@@ -40,7 +43,7 @@ Risco aceito: LinkedIn e Indeed proíbem automação; possível ban (conta secun
 - Pergunta desconhecida: pular a vaga e registrar (nunca inventar dado pessoal).
 
 ## 6b. Salário e exterior (decidido em 2026-11-11)
-- Salário: o bot NÃO filtra vagas por salário (bolsas de estágio podem ficar abaixo da pretensão de R$ 2.500). Só informa o valor quando o formulário pedir.
+- Salário: o bot NÃO filtra vagas por salário (bolsas de estágio podem ficar abaixo da pretensão). Só informa o valor quando o formulário pedir.
 - Exterior: apenas vagas remotas, como contratado (PJ), em qualquer país. Sem visto de trabalho. Vagas "remote – US only" etc. continuam bloqueadas, pois exigem residência/autorização no país.
 - Fontes: lista inicial pesquisada e testada em 2026-11-11 (`fontes.yaml`). Vagas locais de Maceió estão sobretudo em Gupy, BNE, Sine e CIEE, que o bot ainda não lê.
 - Respostas pessoais ficam em `respostas.yaml` (local, no .gitignore, nunca enviado ao modelo).

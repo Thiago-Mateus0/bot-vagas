@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Formulário de exemplo (fictício) — demonstração do copiloto</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f3f4f7; color: #1d2330; }
+  header { background: #2d3a8c; color: #fff; padding: 14px 28px; }
+  header b { font-size: 17px; } header span { opacity: .8; margin-left: 10px; font-size: 13px; }
+  main { max-width: 760px; margin: 24px auto; background: #fff; border-radius: 10px; padding: 24px 32px 32px;
+         box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h1 { font-size: 21px; margin: 0 0 4px; } .sub { color: #5b6275; margin: 0 0 20px; font-size: 14px; }
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+  .campo { display: flex; flex-direction: column; gap: 5px; } .largo { grid-column: 1 / -1; }
+  label, legend { font-weight: 600; font-size: 13.5px; }
+  input[type=text], select, textarea { font: inherit; padding: 8px 10px; border: 1px solid #c7ccd8; border-radius: 6px; background: #fff; }
+  textarea { min-height: 70px; resize: vertical; }
+  fieldset { border: 0; padding: 0; margin: 0; } fieldset label { font-weight: 400; margin-right: 14px; }
+  .aviso { font-size: 12px; color: #5b6275; }
+  button { margin-top: 22px; font: inherit; font-weight: 600; background: #2d3a8c; color: #fff; border: 0;
+           border-radius: 6px; padding: 10px 22px; }
+</style>
+</head>
+<body>
+<header><b>Empresa Exemplo</b><span>portal de vagas fictício — só para demonstração</span></header>
+<main>
+  <h1>Estágio em Desenvolvimento Backend</h1>
+  <p class="sub">Remoto · Etapa 2 de 3: perguntas da vaga</p>
+  <form id="form" action="#" onsubmit="return false">
+    <div class="grade">
+      <div class="campo"><label for="cidade">Cidade *</label><input id="cidade" type="text" required></div>
+      <div class="campo"><label for="estado">Estado</label><input id="estado" type="text"></div>
+      <div class="campo"><label for="inicio">Disponibilidade para início</label><input id="inicio" type="text"></div>
+      <div class="campo"><label for="ingles">Nível de inglês</label>
+        <select id="ingles"><option value="">Selecione</option><option>Básico</option><option>Intermediário</option>
+          <option>Avançado</option><option>Fluente</option></select></div>
+      <div class="campo"><label for="contrato">Tipo de contrato</label>
+        <select id="contrato"><option value="">Selecione</option><option>Estágio</option><option>CLT</option><option>PJ</option></select></div>
+      <div class="campo"><label for="como">Como você conheceu a vaga?</label><input id="como" type="text"></div>
+      <div class="campo largo"><fieldset><legend>Aceita trabalho remoto?</legend>
+        <label><input type="radio" name="remoto" value="s"> Sim</label><label><input type="radio" name="remoto" value="n"> Não</label></fieldset></div>
+      <div class="campo largo"><label for="porque">Por que você quer trabalhar aqui? *</label>
+        <textarea id="porque" required></textarea></div>
+      <div class="campo largo"><label for="cv">Anexe seu currículo (PDF) *</label><input id="cv" type="file" accept=".pdf" required></div>
+      <div class="campo largo"><label><input id="lgpd" type="checkbox" required> Li e aceito a política de privacidade *</label>
+        <span class="aviso">O copiloto nunca marca consentimento: essa decisão é sua.</span></div>
+    </div>
+    <button type="submit">Enviar candidatura</button>
+  </form>
+</main>
+</body>
+</html>
