@@ -33,7 +33,11 @@ Ele é estudante do 2º semestre de CS: ao entregar trabalho, diga o que ele dev
 ## Próximos passos sugeridos (depois dos itens [Thiago])
 1. Calibrar `PADROES_CAMPOS` do copiloto com o log de depuração da próxima candidatura real.
 2. Calibrar a nota de corte (docs/DECISOES.md, "Em aberto") depois de ~30 vagas avaliadas, quando o Thiago autorizar `--real`.
-- FORA de escopo por decisão do Thiago/risco: LinkedIn e Indeed; envio automático sem clique; resolver captcha.
+- Novo em 2026-11-23: LinkedIn automático (`linkedin.py`, `aplicar-linkedin`, `login-linkedin`, `linkedin.yaml`), por pedido
+  EXPLÍCITO do Thiago, que aceitou o risco à conta. Testado só contra um site falso local (tests/test_linkedin.py):
+  os seletores reais do LinkedIn NÃO foram verificados. Primeiro uso real: `--sem-enviar --max 1`, depois `--max 1`.
+  O copiloto da Gupy segue sem clicar em nada (o teste de allowlist do LinkedIn nele continua valendo).
+- FORA de escopo: Indeed; resolver captcha; evasão de detecção (vale também para o LinkedIn).
 
 ## Regras que valem sempre
 - Sem chamadas reais à API da Anthropic (nem nos testes). `--real` só com autorização explícita do Thiago e teto definido

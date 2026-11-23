@@ -25,6 +25,10 @@ Copiloto Gupy (SEMI-AUTOMÁTICO: Thiago faz login e clica em tudo; o bot só pre
     bot-vagas candidatar <url|chave> [--pdf x.pdf] [--idioma pt|en]   # assiste o formulário até fechar
     bot-vagas marcar <chave|url> enviada|desistiu|em_candidatura      # você diz quando enviou
 
+LinkedIn (AUTOMÁTICO, por decisão do Thiago; risco para a conta aceito — ver docs/DECISOES.md):
+    bot-vagas login-linkedin                          # Chromium visível para VOCÊ logar; nada é lido
+    bot-vagas aplicar-linkedin [--sem-enviar] [--max N]   # busca, filtra e envia Candidatura Simplificada
+
 Operação:
     bot-vagas parar [motivo] / bot-vagas retomar    # botão PARAR (arquivo PARAR na raiz do projeto)
     bot-vagas rodar                                 # rodada diária: buscar + filtrar (usada pelo timer)
@@ -47,9 +51,11 @@ from .plano import plano_neutro
 
 SAIDA_PADRAO = RAIZ_PROJETO / "saida"
 SUBCOMANDOS = ("curriculo", "buscar", "filtrar", "avaliar", "listar", "painel", "preparar",
-               "login-gupy", "candidatar", "marcar", "parar", "retomar", "rodar", "gerar-timer", "testar-notificacao")
+               "login-gupy", "candidatar", "marcar", "parar", "retomar", "rodar", "gerar-timer", "testar-notificacao",
+               "login-linkedin", "aplicar-linkedin")
 # comandos que fazem trabalho (rede, navegador, API, banco): não começam com o PARAR ligado
-COMANDOS_BLOQUEADOS_POR_PARAR = ("buscar", "filtrar", "avaliar", "preparar", "login-gupy", "candidatar", "rodar")
+COMANDOS_BLOQUEADOS_POR_PARAR = ("buscar", "filtrar", "avaliar", "preparar", "login-gupy", "candidatar", "rodar",
+                                 "login-linkedin", "aplicar-linkedin")
 
 
 # --- Etapa 1 ---------------------------------------------------------------
@@ -501,6 +507,89 @@ def cmd_marcar(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- LinkedIn (automático) -----------------------------------------------------------
+
+def cmd_login_linkedin(args: argparse.Namespace) -> int:
+    from .copiloto import PerfilEmUso
+    from .linkedin import URL_LOGIN, login_linkedin
+    from .parada import parar_solicitado
+
+    cfg = _cfg_copiloto(args)
+    try:
+        return login_linkedin(cfg["pasta_perfil"], headless=cfg["headless"], max_segundos=cfg.get("max_segundos"),
+                              url=cfg.get("url_login") or URL_LOGIN, deve_parar=parar_solicitado)
+    except PerfilEmUso as e:
+        print(str(e), file=sys.stderr)
+        return CODIGO_PERFIL_EM_USO
+
+
+def cmd_aplicar_linkedin(args: argparse.Namespace) -> int:
+    from dataclasses import replace
+
+    from .banco import Banco
+    from .copiloto import LogCampos, PerfilEmUso, perfil_em_uso
+    from .filtro import carregar_filtros
+    from .linkedin import aplicar, carregar_config
+    from .notificacao import Notificador
+    from .parada import parar_solicitado
+    from .respostas import carregar_respostas
+
+    cfg = _cfg_copiloto(args)
+    config = carregar_config(args.linkedin)
+    if cfg.get("base_linkedin"):  # só testes
+        config = replace(config, base=cfg["base_linkedin"])
+    if cfg.get("pausas_zero"):  # só testes
+        config = replace(config, pausa_acao=(0.0, 0.0), pausa_vaga=(0.0, 0.0))
+    if perfil_em_uso(cfg["pasta_perfil"]):
+        print(MENSAGEM_PERFIL_EM_USO_CLI, file=sys.stderr)
+        return CODIGO_PERFIL_EM_USO
+    respostas = carregar_respostas(args.respostas)
+    if respostas is None:
+        print("aviso: respostas.yaml não existe; toda pergunta obrigatória fará o bot desistir da vaga "
+              "(copie respostas.example.yaml).", file=sys.stderr)
+
+    pdf = args.pdf
+    if pdf is None:  # currículo neutro, sem API paga; só é anexado se o formulário pedir um arquivo
+        try:
+            from .curriculo import gerar_curriculo
+            from .plano import plano_neutro
+
+            perfil = carregar_perfil(args.perfil)
+            pdf = args.saida / "curriculo-linkedin-pt.pdf"
+            gerar_curriculo(perfil, plano_neutro(perfil, "pt"), pdf)
+        except Exception as e:
+            pdf = None
+            print(f"(aviso: sem PDF do currículo para anexar: {type(e).__name__}; o LinkedIn usará o currículo salvo "
+                  "na sua conta)", file=sys.stderr)
+
+    log_campos = None
+    if not args.sem_log:
+        try:
+            log_campos = LogCampos(cfg["pasta_logs"], respostas, prefixo="linkedin")
+            print(f"log de depuração (local, 0600, sem valores pessoais): {log_campos.caminho}")
+        except OSError:
+            pass
+    with Banco(args.banco) as banco:
+        try:
+            resumo = aplicar(config, respostas, banco=banco, filtros=carregar_filtros(args.filtros), pdf=pdf,
+                             pasta_perfil=cfg["pasta_perfil"], headless=cfg["headless"], enviar=not args.sem_enviar,
+                             maximo=args.max, deve_parar=parar_solicitado, log_campos=log_campos,
+                             notificador=Notificador(_config_notificacao(args)),
+                             permitir_loopback=bool(cfg["permitir_loopback"]))
+        except PerfilEmUso as e:
+            print(str(e), file=sys.stderr)
+            return CODIGO_PERFIL_EM_USO
+        finally:
+            if log_campos is not None:
+                log_campos.fechar()
+    print(resumo.texto(), flush=True)
+    return 0
+
+
+MENSAGEM_PERFIL_EM_USO_CLI = ("Já existe um navegador usando o perfil do bot (feche a janela do login-linkedin/"
+                              "login-gupy ou de outro comando) e tente de novo.")
+
+
 # --- parada, rodada diária, agendamento e notificação ---------------------------
 
 def cmd_parar(args: argparse.Namespace) -> int:
@@ -678,6 +767,27 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--respostas", type=Path, default=RAIZ_PROJETO / "respostas.yaml")
     p.set_defaults(func=cmd_candidatar, fetch=None, copiloto_cfg=None)
 
+    # --- LinkedIn ---
+    p = sub.add_parser("login-linkedin", help="abre um Chromium VISÍVEL para VOCÊ fazer login no LinkedIn")
+    p.add_argument("--perfil-navegador", type=Path, default=None, help=f"pasta do perfil (padrão {PASTA_PERFIL_PADRAO})")
+    p.set_defaults(func=cmd_login_linkedin, copiloto_cfg=None)
+
+    p = sub.add_parser("aplicar-linkedin", help="AUTOMÁTICO: busca vagas, filtra e ENVIA a Candidatura Simplificada")
+    _opcoes_comuns(p)
+    p.add_argument("--max", type=int, default=None, help="no máximo N envios nesta execução (além do limite diário)")
+    p.add_argument("--sem-enviar", action="store_true",
+                   help="SIMULAÇÃO: percorre e preenche, mas NÃO envia (descarta o rascunho). Use no primeiro teste")
+    p.add_argument("--linkedin", type=Path, default=RAIZ_PROJETO / "linkedin.yaml")
+    p.add_argument("--pdf", type=Path, default=None, help="PDF do currículo (padrão: neutro em PT, gerado agora)")
+    p.add_argument("--sem-log", action="store_true", help="não grava o log local de depuração")
+    p.add_argument("--notificacao", type=Path, default=None)
+    p.add_argument("--perfil-navegador", type=Path, default=None, help=f"pasta do perfil (padrão {PASTA_PERFIL_PADRAO})")
+    p.add_argument("--saida", type=Path, default=SAIDA_PADRAO)
+    p.add_argument("--perfil", type=Path, default=PERFIL_PADRAO)
+    p.add_argument("--filtros", type=Path, default=RAIZ_PROJETO / "filtros.yaml")
+    p.add_argument("--respostas", type=Path, default=RAIZ_PROJETO / "respostas.yaml")
+    p.set_defaults(func=cmd_aplicar_linkedin, copiloto_cfg=None)
+
     p = sub.add_parser("parar", help="BOTÃO PARAR: cria o arquivo PARAR; tudo para e nada novo começa")
     p.add_argument("motivo", nargs="*", help="motivo (opcional, só para referência)")
     p.set_defaults(func=cmd_parar)
@@ -722,7 +832,7 @@ def main(argv: list[str] | None = None, *, client_factory=None, fetch=None, copi
         args.client_factory = client_factory  # injeção para testes; nunca usada em produção
     if comando in ("preparar", "candidatar") and fetch is not None:
         args.fetch = fetch  # injeção para testes: nunca abre o Playwright
-    if comando in ("candidatar", "login-gupy") and copiloto_cfg is not None:
+    if comando in ("candidatar", "login-gupy", "login-linkedin", "aplicar-linkedin") and copiloto_cfg is not None:
         args.copiloto_cfg = copiloto_cfg  # injeção SÓ para testes (headless, loopback, perfil temporário)
     if comando == "rodar" and http_factory is not None:
         args.http_factory = http_factory  # injeção SÓ para testes: nunca acessa a rede

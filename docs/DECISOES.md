@@ -27,7 +27,14 @@ sempre de uma pessoa.
 | Greenhouse, Lever | APIs públicas de quadros de vagas | quase não têm vagas de estágio no Brasil |
 | Gupy | página pública de busca do portal | é a fonte principal; a rota não é documentada e pode mudar. O bot **detecta mudança de formato ou bloqueio, avisa e para**; não tenta contornar |
 
-**Fora do escopo:** LinkedIn e Indeed. Os termos de uso proíbem automação, e o risco de perder a conta não compensa.
+**LinkedIn (decisão de 2026-11-23, revisa a anterior):** passa a ser candidatura **automática** via Candidatura
+Simplificada (`aplicar-linkedin`). Os termos de uso do LinkedIn proíbem automação e a conta pode ser restringida
+ou banida; o Thiago pediu explicitamente para seguir mesmo assim e aceitou o risco. Travas mantidas: login sempre
+feito por ele, limite diário (8), pausas, só vagas que passam no filtro, desiste (e descarta o rascunho) se qualquer
+pergunta obrigatória não tiver resposta segura, para ao ver checkpoint/captcha/limite e com o arquivo PARAR. Sem
+evasão de detecção e sem resolver captcha. O copiloto da Gupy **não mudou**: continua sem clicar em nada.
+
+**Fora do escopo:** Indeed (mesmo risco, sem pedido de inclusão).
 
 ## Por que semi-automático (copiloto) e não envio automático
 
