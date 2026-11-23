@@ -461,7 +461,11 @@ _JS_INSTALAR = r"""
 """
 
 _JS_COLETAR = r"""
-(ATR_ID) => {
+(arg) => {
+  // `arg` é o nome do atributo (Gupy: página inteira) ou [atributo, seletorDaRaiz] (escopo de um diálogo)
+  const ATR_ID = Array.isArray(arg) ? arg[0] : arg;
+  const raiz = (Array.isArray(arg) && arg[1]) ? document.querySelector(arg[1]) : document;
+  if (!raiz) return [];
   const vis = (el) => {
     if (!el || el.type === 'hidden') return false;
     const cs = getComputedStyle(el);
@@ -493,7 +497,7 @@ _JS_COLETAR = r"""
   };
   let seq = window.__botVagasSeq || 0;
   const saida = [];
-  document.querySelectorAll('input, select, textarea').forEach((el) => {
+  raiz.querySelectorAll('input, select, textarea').forEach((el) => {
     if (el.closest('#bot-vagas-painel')) return;
     if (!vis(el)) return;
     if (!el.getAttribute(ATR_ID)) { seq += 1; el.setAttribute(ATR_ID, 'bv' + seq); }

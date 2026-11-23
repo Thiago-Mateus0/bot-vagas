@@ -24,7 +24,10 @@ ele deixa para a pessoa: pergunta aberta e consentimento. Ele nunca clica em nad
    habilidade, empresa ou resultado que não esteja no perfil original.
 4. **Copiloto de formulário:** abre a vaga num navegador visível, preenche os campos que reconhece, anexa o PDF e
    destaca o resto.
-5. **Painel local** com as vagas, os status, o histórico e o gasto com a API.
+5. **LinkedIn (opcional, automático):** `aplicar-linkedin` envia a Candidatura Simplificada das vagas que passam no
+   filtro, com limite diário e desistindo de qualquer pergunta sem resposta segura. Os termos do LinkedIn proíbem
+   automação (risco para a conta); veja [docs/USO.md](docs/USO.md) e comece com `--sem-enviar`.
+6. **Painel local** com as vagas, os status, o histórico e o gasto com a API.
 
 ![Painel local com vagas fictícias, notas, status e gasto do mês](docs/img/painel.png)
 

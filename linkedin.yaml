@@ -1,0 +1,24 @@
+# LinkedIn (Candidatura Simplificada automática). Ver docs/DECISOES.md: decisão do Thiago, com risco
+# aceito para a conta. Comece SEMPRE com:  bot-vagas aplicar-linkedin --sem-enviar --max 1
+# Dados pessoais NÃO ficam aqui (ficam em respostas.yaml, fora do git).
+
+# Cada busca vira uma pesquisa em linkedin.com/jobs. O filtro de filtros.yaml (estágio/trainee, remoto ou
+# Maceió) ainda decide o que realmente é enviado.
+buscas:
+  - {termo: "estagio ti", local: "Brasil"}
+  - {termo: "estagio desenvolvedor", local: "Brasil"}
+  - {termo: "estagio python", local: "Brasil"}
+  - {termo: "estagio backend", local: "Brasil"}
+  - {termo: "estagio ti", local: "Maceió, Alagoas, Brasil"}
+  - {termo: "estagio desenvolvimento", local: "Maceió, Alagoas, Brasil"}
+
+somente_candidatura_simplificada: true   # só vagas com o botão "Candidatura simplificada" (f_AL)
+filtrar_nivel_estagio: true              # pede ao LinkedIn só o nível "Estágio" (f_E=1)
+publicadas_ultimos_dias: 7
+
+# Travas (a conta é sua, o risco é seu; estes números são conservadores de propósito).
+max_envios_por_dia: 8
+max_vagas_analisadas_por_execucao: 40
+pausa_entre_acoes_s: [1.5, 4]            # entre cliques/páginas
+pausa_entre_candidaturas_s: [25, 70]
+falhas_seguidas_para_parar: 4            # se o layout mudar, o bot para em vez de insistir

@@ -44,3 +44,8 @@ extras:
   como_conheceu_a_vaga: "Portal de vagas"
   aceita_viajar: null
   aceita_trabalhar_fins_de_semana: null
+  # LinkedIn: perguntas "Quantos anos de experiência você tem com X?". Só o que estiver aqui é respondido;
+  # sem valor (ou sem `padrao`) o bot desiste da vaga em vez de chutar. Use números verdadeiros.
+  anos_experiencia:
+    padrao: 0
+    # python: 1

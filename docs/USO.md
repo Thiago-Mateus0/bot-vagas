@@ -119,5 +119,23 @@ systemctl --user list-timers bot-vagas.timer  # confira o próximo disparo
 
 - Dados pessoais só em `perfil.yaml`, `respostas.yaml` e no perfil do navegador (todos fora do git).
 - O código nunca lê a chave da API (o SDK da Anthropic lê sozinho, e só com `--real`).
-- Sem evasão de detecção de automação, sem resolver captcha, sem LinkedIn/Indeed. Se a Gupy bloquear, o bot para e avisa.
+- Sem evasão de detecção de automação, sem resolver captcha, sem Indeed. (LinkedIn: ver a seção abaixo.) Se a Gupy bloquear, o bot para e avisa.
 - `vagas.db` é o banco local; não edite à mão. Para ver o painel com dados fictícios: `.venv/bin/python demo/criar_demo.py`.
+
+## LinkedIn (automático, risco aceito)
+
+Diferente da Gupy, aqui o bot **clica e envia**. Os termos do LinkedIn proíbem automação: a conta pode ser
+limitada ou banida (decisão sua, registrada em `docs/DECISOES.md`).
+
+1. `bot-vagas login-linkedin`: abre o navegador; **você** entra (senha/2FA) e fecha a janela.
+2. Preencha `respostas.yaml` (inclua `extras.anos_experiencia`, com números verdadeiros) e ajuste `linkedin.yaml`.
+3. **Primeiro teste, sem enviar:** `bot-vagas aplicar-linkedin --sem-enviar --max 1`. Ele percorre o formulário,
+   preenche e descarta o rascunho. Confira no terminal se achou os botões e como tratou as perguntas.
+4. Depois: `bot-vagas aplicar-linkedin --max 1` e confira a candidatura no LinkedIn. Só então rode sem `--max`.
+
+Regras do bot: só vagas que passam em `filtros.yaml`; só com "Candidatura simplificada"; se qualquer pergunta
+obrigatória não tiver resposta segura (aberta, consentimento, anos sem valor, campo desconhecido) ele **desiste
+daquela vaga** e lista os nomes dos campos; limite diário em `linkedin.yaml`; pausas aleatórias entre ações;
+para sozinho ao ver checkpoint/captcha/limite do LinkedIn (você resolve à mão) e com `bot-vagas parar`.
+Os seletores do LinkedIn não são documentados e mudam: o bot foi testado só contra páginas locais de teste.
+Se 4 vagas seguidas falharem, ele para (provável mudança de layout).

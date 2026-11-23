@@ -142,6 +142,12 @@ class Banco:
                 (status, nota, motivo, detalhes, _agora(), chave),
             )
 
+    def contar_enviadas_desde(self, fonte: str, desde_iso: str) -> int:
+        """Quantas vagas da `fonte` estão 'enviada' com atualização a partir de `desde_iso` (UTC). Base do limite diário."""
+        row = self.con.execute("SELECT COUNT(*) n FROM vagas WHERE fonte=? AND status='enviada' AND atualizado_em>=?",
+                               (fonte, desde_iso)).fetchone()
+        return int(row["n"])
+
     def contar_por_status(self) -> dict[str, int]:
         rows = self.con.execute("SELECT status, COUNT(*) n FROM vagas GROUP BY status").fetchall()
         return {r["status"]: r["n"] for r in rows}
