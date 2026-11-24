@@ -360,7 +360,9 @@ class SessaoLinkedIn:
     # -- busca --------------------------------------------------------------------------------
 
     def coletar_ids(self, url: str) -> list[str]:
+        self.log(f"abrindo a busca: {url.split('?')[0]}  ({urlsplit(url).query[:80]})")
         self.pg.goto(url, wait_until="domcontentloaded")
+        self.log(f"página aberta: {urlsplit(self.pg.url).path[:60]}")
         self._checar_bloqueio()
         self.pausa(self.cfg.pausa_acao)
         ids: list[str] = []
@@ -610,6 +612,12 @@ class SessaoLinkedIn:
 
 # --- navegador visível (só na CLI) ---------------------------------------------------------------
 
+def _motivo_erro(e: BaseException) -> str:
+    """Tipo + primeira linha da mensagem (sem dados pessoais: vem do Playwright/Python), para diagnóstico."""
+    linha = next((l.strip() for l in str(e).splitlines() if l.strip()), "")
+    return f"{type(e).__name__}: {linha[:160]}" if linha else type(e).__name__
+
+
 def login_linkedin(pasta_perfil: Path | str = cop.PASTA_PERFIL_PADRAO, *, url: str = URL_LOGIN, log=print,
                    headless: bool = False, max_segundos: float | None = None,
                    deve_parar: Callable[[], bool] | None = None) -> int:
@@ -658,9 +666,9 @@ def aplicar(cfg: ConfigLinkedIn, respostas, *, banco: Banco, filtros: Filtros, p
             sinais.recebido = sinais.recebido or "Ctrl+C"
         except ErroPW as e:
             fechado = ctx is None or not ctx.pages or "closed" in str(e).lower()
-            resumo.encerramento = "janela fechada" if fechado else f"erro do navegador ({type(e).__name__})"
+            resumo.encerramento = f"{'janela fechada' if fechado else 'erro do navegador'} [{_motivo_erro(e)}]"
         except Exception as e:
-            resumo.encerramento = f"erro inesperado ({type(e).__name__})"
+            resumo.encerramento = f"erro inesperado [{_motivo_erro(e)}]"
         finally:
             _encerrar_navegador(ctx, pw, seguro=seguro)
     if sinais.recebido:
