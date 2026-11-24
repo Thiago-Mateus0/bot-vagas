@@ -192,15 +192,23 @@ class Resumo:
 
 _JS_IDS_VAGAS = r"""
 () => {
+  // O LinkedIn muda o HTML da lista com frequência: junta IDs de várias fontes (atributos com "job" no nome,
+  // URNs fsd_jobPosting, links /jobs/view/<id> e ?currentJobId=<id>).
   const ids = new Set();
-  document.querySelectorAll('[data-occludable-job-id], [data-job-id]').forEach(e => {
-    const v = e.getAttribute('data-occludable-job-id') || e.getAttribute('data-job-id');
-    if (v && /^\d+$/.test(v)) ids.add(v);
+  const add = (v) => { if (v && /^\d{8,}$/.test(String(v))) ids.add(String(v)); };
+  document.querySelectorAll('*').forEach(e => {
+    for (const a of e.attributes) {
+      if (/job/i.test(a.name) || /jobPosting/i.test(a.value)) {
+        const m = String(a.value).match(/(\d{8,})\s*$/); if (m) add(m[1]);
+      }
+    }
   });
-  document.querySelectorAll('a[href*="/jobs/view/"]').forEach(a => {
-    const m = (a.getAttribute('href') || '').match(/\/jobs\/view\/(?:[^\/?]*-)?(\d{5,})/);
-    if (m) ids.add(m[1]);
+  document.querySelectorAll('a[href]').forEach(a => {
+    const h = a.getAttribute('href') || '';
+    let m = h.match(/\/jobs\/view\/(?:[^\/?]*-)?(\d{8,})/); if (m) add(m[1]);
+    m = h.match(/currentJobId=(\d{8,})/); if (m) add(m[1]);
   });
+  const m = location.search.match(/currentJobId=(\d{8,})/); if (m) add(m[1]);
   return Array.from(ids);
 }
 """
@@ -364,17 +372,30 @@ class SessaoLinkedIn:
         self.pg.goto(url, wait_until="domcontentloaded")
         self.log(f"página aberta: {urlsplit(self.pg.url).path[:60]}")
         self._checar_bloqueio()
+        self._esperar_renderizar()
         self.pausa(self.cfg.pausa_acao)
         ids: list[str] = []
-        for _ in range(4):  # rolagem curta para carregar mais cartões (a lista é virtualizada)
+        for _ in range(5):  # rolagem curta para carregar mais cartões (a lista é virtualizada)
             ids = list(dict.fromkeys(ids + self.pg.evaluate(_JS_IDS_VAGAS)))
-            self.pg.mouse.wheel(0, 1800)
+            try:
+                self.pg.mouse.move(320, 520)  # sobre a lista (coluna da esquerda), que rola por dentro
+                self.pg.mouse.wheel(0, 1400)
+            except Exception:
+                pass
             self.pausa((0.6, 1.4))
         return ids
+
+    def _esperar_renderizar(self) -> None:
+        """A busca é uma SPA: depois do carregamento inicial a lista ainda aparece por scripts."""
+        try:
+            self.pg.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            pass
 
     def ler_vaga(self, id_vaga: str) -> Vaga | None:
         self.pg.goto(url_vaga(id_vaga, self.cfg.base), wait_until="domcontentloaded")
         self._checar_bloqueio()
+        self._esperar_renderizar()
         self.pausa(self.cfg.pausa_acao)
         d = self.pg.evaluate(_JS_DADOS_VAGA)
         titulo, empresa = d.get("titulo", ""), d.get("empresa", "")
@@ -572,13 +593,16 @@ class SessaoLinkedIn:
                     vaga = self.ler_vaga(id_vaga)
                     if vaga is None:
                         r.puladas += 1
+                        self.log(f"  pulei {id_vaga}: não consegui ler título/empresa da página")
                         continue
                     if self.ja_tratada(vaga):
                         r.puladas += 1
+                        self.log(f"  pulei: {vaga.empresa} / {vaga.cargo}: já tratada antes")
                         continue
                     filtro = avaliar_palavras_chave(vaga, self.filtros)
                     if not filtro.passou:
                         r.puladas += 1
+                        self.log(f"  pulei: {vaga.empresa} / {vaga.cargo}: {filtro.motivo}")
                         self.banco.salvar_vagas([vaga])
                         continue
                     r.elegiveis += 1
@@ -674,3 +698,70 @@ def aplicar(cfg: ConfigLinkedIn, respostas, *, banco: Banco, filtros: Filtros, p
     if sinais.recebido:
         resumo.encerramento = f"interrompido ({sinais.recebido})"
     return resumo
+
+
+_JS_DIAGNOSTICO = r"""
+() => {
+  // SÓ estrutura: nomes de atributos, formato de links (números viram N, sem query) e contagens. Nenhum texto da página.
+  const forma = (h) => (h || '').split('?')[0].replace(/\d{4,}/g, 'N').replace(/^https?:\/\/[^\/]+/, '').slice(0, 70);
+  const cont = (m, k) => m[k] = (m[k] || 0) + 1;
+  const links = {}, attrs = {}, tags = {};
+  document.querySelectorAll('a[href]').forEach(a => cont(links, forma(a.getAttribute('href'))));
+  document.querySelectorAll('*').forEach(e => {
+    for (const a of e.attributes) if (/job/i.test(a.name) || /jobPosting/i.test(a.value))
+      cont(attrs, e.tagName.toLowerCase() + '[' + a.name + ']=' + String(a.value).replace(/\d{4,}/g, 'N').slice(0, 40));
+  });
+  ['li', '[role=listitem]', '[role=list]', '[role=listbox]', '[role=option]', 'button', 'h1', 'h2', '[role=dialog]']
+    .forEach(s => tags[s] = document.querySelectorAll(s).length);
+  const rol = Array.from(document.querySelectorAll('*')).filter(e => e.scrollHeight > e.clientHeight + 200 &&
+    /(auto|scroll)/.test(getComputedStyle(e).overflowY)).slice(0, 6)
+    .map(e => e.tagName.toLowerCase() + (e.id ? '#N' : '') + '.' + (e.className || '').toString().split(' ').slice(0, 2).join('.'));
+  const top = (m, n) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n);
+  return {caminho: location.pathname, links: top(links, 14), atributos: top(attrs, 14), contagens: tags, roláveis: rol,
+          ids: Array.from(document.querySelectorAll('a[href]')).length};
+}
+"""
+
+
+def diagnosticar(cfg: ConfigLinkedIn, pasta_perfil: Path | str = cop.PASTA_PERFIL_PADRAO, *, log=print,
+                 headless: bool = False) -> int:
+    """Abre UMA busca e imprime só a ESTRUTURA da página (sem textos), para ajustar os seletores."""
+    from playwright.sync_api import sync_playwright
+
+    pasta = preparar_pasta_perfil(pasta_perfil)
+    if perfil_em_uso(pasta):
+        raise PerfilEmUso()
+    termo, local = cfg.buscas[0]
+    pw = ctx = None
+    try:
+        pw = sync_playwright().start()
+        ctx = abrir_contexto_persistente(pw, pasta, headless=headless)
+        pg = ctx.pages[0] if ctx.pages else ctx.new_page()
+        pg.goto(url_busca(termo, local, cfg), wait_until="domcontentloaded")
+        try:
+            pg.wait_for_load_state("networkidle", timeout=10000)
+        except Exception:
+            pass
+        time.sleep(3)
+        busca = pg.evaluate(_JS_DIAGNOSTICO)
+        ids = pg.evaluate(_JS_IDS_VAGAS)
+        busca["ids_encontrados"] = len(ids)
+        log("=== BUSCA ===")
+        log(json.dumps(busca, ensure_ascii=False, indent=1))
+        if ids:
+            pg.goto(url_vaga(ids[0], cfg.base), wait_until="domcontentloaded")
+            try:
+                pg.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                pass
+            time.sleep(2)
+            vaga = pg.evaluate(_JS_DIAGNOSTICO)
+            dados = pg.evaluate(_JS_DADOS_VAGA)
+            vaga["leitura"] = {k: (len(v) if isinstance(v, str) else v) for k, v in dados.items() if k != "titulo_aba"}
+            vaga["botoes_candidatura"] = pg.get_by_role("button", name=R_SIMPLIFICADA).count() + \
+                pg.get_by_role("link", name=R_SIMPLIFICADA).count()
+            log("=== PÁGINA DE UMA VAGA (tamanhos dos textos lidos, não o texto) ===")
+            log(json.dumps(vaga, ensure_ascii=False, indent=1))
+    finally:
+        _encerrar_navegador(ctx, pw)
+    return 0

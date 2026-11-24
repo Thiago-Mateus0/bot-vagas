@@ -52,10 +52,10 @@ from .plano import plano_neutro
 SAIDA_PADRAO = RAIZ_PROJETO / "saida"
 SUBCOMANDOS = ("curriculo", "buscar", "filtrar", "avaliar", "listar", "painel", "preparar",
                "login-gupy", "candidatar", "marcar", "parar", "retomar", "rodar", "gerar-timer", "testar-notificacao",
-               "login-linkedin", "aplicar-linkedin")
+               "login-linkedin", "aplicar-linkedin", "diagnosticar-linkedin")
 # comandos que fazem trabalho (rede, navegador, API, banco): não começam com o PARAR ligado
 COMANDOS_BLOQUEADOS_POR_PARAR = ("buscar", "filtrar", "avaliar", "preparar", "login-gupy", "candidatar", "rodar",
-                                 "login-linkedin", "aplicar-linkedin")
+                                 "login-linkedin", "aplicar-linkedin", "diagnosticar-linkedin")
 
 
 # --- Etapa 1 ---------------------------------------------------------------
@@ -523,6 +523,18 @@ def cmd_login_linkedin(args: argparse.Namespace) -> int:
         return CODIGO_PERFIL_EM_USO
 
 
+def cmd_diagnosticar_linkedin(args: argparse.Namespace) -> int:
+    from .copiloto import PerfilEmUso
+    from .linkedin import carregar_config, diagnosticar
+
+    cfg = _cfg_copiloto(args)
+    try:
+        return diagnosticar(carregar_config(args.linkedin), cfg["pasta_perfil"], headless=cfg["headless"])
+    except PerfilEmUso as e:
+        print(str(e), file=sys.stderr)
+        return CODIGO_PERFIL_EM_USO
+
+
 def cmd_aplicar_linkedin(args: argparse.Namespace) -> int:
     from dataclasses import replace
 
@@ -772,6 +784,11 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--perfil-navegador", type=Path, default=None, help=f"pasta do perfil (padrão {PASTA_PERFIL_PADRAO})")
     p.set_defaults(func=cmd_login_linkedin, copiloto_cfg=None)
 
+    p = sub.add_parser("diagnosticar-linkedin", help="imprime só a ESTRUTURA da busca/vaga (sem textos) para ajustar seletores")
+    p.add_argument("--linkedin", type=Path, default=RAIZ_PROJETO / "linkedin.yaml")
+    p.add_argument("--perfil-navegador", type=Path, default=None)
+    p.set_defaults(func=cmd_diagnosticar_linkedin, copiloto_cfg=None)
+
     p = sub.add_parser("aplicar-linkedin", help="AUTOMÁTICO: busca vagas, filtra e ENVIA a Candidatura Simplificada")
     _opcoes_comuns(p)
     p.add_argument("--max", type=int, default=None, help="no máximo N envios nesta execução (além do limite diário)")
@@ -832,7 +849,7 @@ def main(argv: list[str] | None = None, *, client_factory=None, fetch=None, copi
         args.client_factory = client_factory  # injeção para testes; nunca usada em produção
     if comando in ("preparar", "candidatar") and fetch is not None:
         args.fetch = fetch  # injeção para testes: nunca abre o Playwright
-    if comando in ("candidatar", "login-gupy", "login-linkedin", "aplicar-linkedin") and copiloto_cfg is not None:
+    if comando in ("candidatar", "login-gupy", "login-linkedin", "aplicar-linkedin", "diagnosticar-linkedin") and copiloto_cfg is not None:
         args.copiloto_cfg = copiloto_cfg  # injeção SÓ para testes (headless, loopback, perfil temporário)
     if comando == "rodar" and http_factory is not None:
         args.http_factory = http_factory  # injeção SÓ para testes: nunca acessa a rede

@@ -85,19 +85,19 @@ PASSO_SEM_RESPOSTA = ('<h3>Perguntas</h3><label for="cn">Número da carteira de 
 PASSO_REVISAO = "<h3>Revise sua candidatura</h3><p>Tudo certo?</p>"
 
 VAGAS = {
-    "1001": {"titulo": "Estágio em Desenvolvimento Backend", "empresa": "Alfa", "local": "Brasil (Remoto)",
+    "3900001001": {"titulo": "Estágio em Desenvolvimento Backend", "empresa": "Alfa", "local": "Brasil (Remoto)",
              "passos": [PASSO_CONTATO, PASSO_PERGUNTAS, PASSO_REVISAO]},
-    "1002": {"titulo": "Estágio em TI", "empresa": "Beta", "local": "Brasil (Remoto)",
+    "3900001002": {"titulo": "Estágio em TI", "empresa": "Beta", "local": "Brasil (Remoto)",
              "passos": [PASSO_CONTATO, PASSO_ABERTA, PASSO_REVISAO]},
-    "1003": {"titulo": "Desenvolvedor Sênior", "empresa": "Gama", "local": "Brasil (Remoto)",
+    "3900001003": {"titulo": "Desenvolvedor Sênior", "empresa": "Gama", "local": "Brasil (Remoto)",
              "passos": [PASSO_CONTATO, PASSO_REVISAO]},
-    "1004": {"titulo": "Estágio Python", "empresa": "Delta", "local": "Brasil (Remoto)", "externa": True,
+    "3900001004": {"titulo": "Estágio Python", "empresa": "Delta", "local": "Brasil (Remoto)", "externa": True,
              "passos": []},
-    "1005": {"titulo": "Estágio Desenvolvedor Python", "empresa": "Epsilon", "local": "Brasil (Remoto)",
+    "3900001005": {"titulo": "Estágio Desenvolvedor Python", "empresa": "Epsilon", "local": "Brasil (Remoto)",
              "passos": [PASSO_CONTATO, PASSO_PERGUNTAS, PASSO_REVISAO]},
-    "1006": {"titulo": "Estágio Dados", "empresa": "Zeta", "local": "Brasil (Remoto)",
+    "3900001006": {"titulo": "Estágio Dados", "empresa": "Zeta", "local": "Brasil (Remoto)",
              "bloqueio": "Vamos fazer uma verificação de segurança rápida", "passos": [PASSO_REVISAO]},
-    "1007": {"titulo": "Estágio Sistemas", "empresa": "Eta", "local": "Brasil (Remoto)",
+    "3900001007": {"titulo": "Estágio Sistemas", "empresa": "Eta", "local": "Brasil (Remoto)",
              "passos": [PASSO_CONTATO, PASSO_SEM_RESPOSTA, PASSO_REVISAO]},
 }
 
@@ -211,49 +211,49 @@ def test_valor_anos_so_do_respostas():
 # --- fluxo ----------------------------------------------------------------------------------------
 
 def test_envia_candidatura_completa_e_registra(pagina, site, banco):
-    s = _sessao(pagina, site, banco, ids={"1001"})
+    s = _sessao(pagina, site, banco, ids={"3900001001"})
     r = s.executar()
     assert (r.enviadas, r.desistencias) == (1, 0), r.resultados
     ev = [e["ev"] for e in site[1]]
     assert any(e.startswith("enviou:") for e in ev) and "descartou" not in ev
     resp = json.loads(next(e for e in ev if e.startswith("enviou:"))[len("enviou:"):])
     assert resp["py"] == "1" and resp["rm"] == "s" and resp["tel"] == "11999990000"  # prefilled intacto
-    row = banco.buscar_por_url(f"{site[0]}/jobs/view/1001/")
+    row = banco.buscar_por_url(f"{site[0]}/jobs/view/3900001001/")
     assert row["status"] == "enviada" and row["fonte"] == "linkedin"
     assert banco.contar_enviadas_desde("linkedin", "2000-01-01T00:00:00+00:00") == 1
 
 
 def test_pergunta_aberta_obrigatoria_desiste_e_descarta(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1002"}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001002"}).executar()
     assert (r.enviadas, r.desistencias) == (0, 1)
     assert "descartou" in [e["ev"] for e in site[1]] and not any(e["ev"].startswith("enviou") for e in site[1])
     assert any("Por que" in c for c in r.resultados[0].campos)
-    row = banco.buscar_por_url(f"{site[0]}/jobs/view/1002/")
+    row = banco.buscar_por_url(f"{site[0]}/jobs/view/3900001002/")
     assert row["status"] != "enviada"
     assert "11999990000" not in json.dumps(dict(row))  # o detalhe guarda só nomes de campo, nunca valores
 
 
 def test_campo_obrigatorio_desconhecido_nao_e_inventado(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1007"}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001007"}).executar()
     assert r.enviadas == 0 and r.desistencias == 1
     assert not any(e["ev"].startswith("enviou") for e in site[1])
 
 
 def test_sem_anos_no_respostas_desiste(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1001"}, respostas={"localizacao": {"aceita_remoto": True}}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001"}, respostas={"localizacao": {"aceita_remoto": True}}).executar()
     assert r.enviadas == 0 and r.desistencias == 1 and "anos de experiência" in " ".join(r.resultados[0].campos).lower() + r.resultados[0].motivo.lower() + "anos de experiência"
 
 
 def test_filtro_bloqueia_nivel_e_externa_nao_abre_formulario(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1003", "1004"}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001003", "3900001004"}).executar()
     assert r.enviadas == 0
-    assert r.elegiveis == 1  # 1003 (Sênior) barrado pelo filtro; 1004 elegível mas sem Candidatura Simplificada
+    assert r.elegiveis == 1  # 3900001003 (Sênior) barrado pelo filtro; 3900001004 elegível mas sem Candidatura Simplificada
     assert r.resultados[0].resultado == "desistiu" and "sem Candidatura Simplificada" in r.resultados[0].motivo
     assert site[1] == []
 
 
 def test_sem_enviar_simula_e_descarta(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1001"}, enviar=False).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001"}, enviar=False).executar()
     assert (r.enviadas, r.simuladas) == (0, 1)
     ev = [e["ev"] for e in site[1]]
     assert ev == ["descartou"]
@@ -261,7 +261,7 @@ def test_sem_enviar_simula_e_descarta(pagina, site, banco):
 
 
 def test_limite_diario_para_depois_do_primeiro(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1001", "1005"}, max_dia=1).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001", "3900001005"}, max_dia=1).executar()
     assert r.enviadas == 1 and "limite" in r.encerramento
     assert sum(e["ev"].startswith("enviou") for e in site[1]) == 1
 
@@ -270,18 +270,18 @@ def test_limite_diario_ja_atingido_nem_abre(pagina, site, banco):
     v = Vaga(id_fonte="9", fonte="linkedin", empresa="X", cargo="Estágio", url="https://www.linkedin.com/jobs/view/9/")
     banco.salvar_vagas([v])
     banco.atualizar_status(chave_vaga("X", "Estágio", v.url), "enviada")
-    r = _sessao(pagina, site, banco, ids={"1001"}, max_dia=1).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001"}, max_dia=1).executar()
     assert r.enviadas == 0 and "limite diário" in r.encerramento and site[1] == []
 
 
 def test_nao_repete_vaga_ja_enviada_nem_ja_tentada(pagina, site, banco):
-    _sessao(pagina, site, banco, ids={"1001", "1002"}).executar()
-    r2 = _sessao(pagina, site, banco, ids={"1001", "1002"}).executar()
+    _sessao(pagina, site, banco, ids={"3900001001", "3900001002"}).executar()
+    r2 = _sessao(pagina, site, banco, ids={"3900001001", "3900001002"}).executar()
     assert r2.enviadas == 0 and r2.elegiveis == 0 and site[1] == []
 
 
 def test_checkpoint_para_tudo(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1006"}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001006"}).executar()
     assert r.enviadas == 0 and r.encerramento.startswith("parado:") and "verificação" in r.encerramento
     assert site[1] == []
 
@@ -293,13 +293,13 @@ def test_arquivo_parar_interrompe_entre_vagas(pagina, site, banco):
         chamadas["n"] += 1
         return chamadas["n"] > 4  # deixa a 1ª vaga correr e para antes da seguinte
 
-    r = _sessao(pagina, site, banco, ids={"1001", "1005"}, deve_parar=parar).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001", "3900001005"}, deve_parar=parar).executar()
     assert r.encerramento.startswith("parado: arquivo PARAR")
     assert r.enviadas <= 1
 
 
 def test_nada_de_valor_pessoal_no_log_de_resumo(pagina, site, banco):
-    r = _sessao(pagina, site, banco, ids={"1001"}).executar()
+    r = _sessao(pagina, site, banco, ids={"3900001001"}).executar()
     texto = r.texto() + json.dumps(_sessao(pagina, site, banco).copiloto.registro.para_json())
     assert "11999990000" not in texto and "a@x.test" not in texto
 
@@ -310,3 +310,13 @@ def test_comandos_linkedin_respeitam_parar(_isolar_arquivos_reais):
 
     solicitar_parada("teste")
     assert cli.main(["aplicar-linkedin"]) == 4 and cli.main(["login-linkedin"]) == 4
+
+
+def test_coleta_ids_do_html_novo_do_linkedin(pagina):
+    from bot_vagas.linkedin import _JS_IDS_VAGAS
+
+    pagina.set_content(
+        "<div data-view-job-id='3900000001'></div><div data-entity-urn='urn:li:fsd_jobPosting:3900000002'></div>"
+        "<a href='/jobs/search-results/?currentJobId=3900000003&x=1'>a</a><a href='/jobs/view/estagio-ti-at-x-3900000004/'>b</a>"
+        "<a href='/company/123456789'>não é vaga</a>")
+    assert sorted(pagina.evaluate(_JS_IDS_VAGAS)) == ["3900000001", "3900000002", "3900000003", "3900000004"]
