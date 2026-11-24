@@ -320,3 +320,28 @@ def test_coleta_ids_do_html_novo_do_linkedin(pagina):
         "<a href='/jobs/search-results/?currentJobId=3900000003&x=1'>a</a><a href='/jobs/view/estagio-ti-at-x-3900000004/'>b</a>"
         "<a href='/company/123456789'>não é vaga</a>")
     assert sorted(pagina.evaluate(_JS_IDS_VAGAS)) == ["3900000001", "3900000002", "3900000003", "3900000004"]
+
+
+def test_coleta_por_clique_no_layout_novo(pagina):
+    """Cartões sem link nem ID: o ID só aparece na URL (?currentJobId=) depois do clique."""
+    cartoes = "".join(
+        f"<li style='height:110px;width:400px' onclick=\"history.replaceState(null,'','?currentJobId=39000{i:05d}')\">"
+        f"Estágio em TI número {i} na Empresa {i}</li>" for i in range(1, 5))
+    html = f"<html><body><ul style='margin:0;padding:0;list-style:none'>{cartoes}</ul></body></html>"
+    pagina.route("http://busca.test/**", lambda rota: rota.fulfill(status=200, content_type="text/html", body=html))
+    pagina.goto("http://busca.test/jobs/search-results/")
+    s = SessaoLinkedIn(pagina, ConfigLinkedIn(pausa_acao=(0, 0)), {}, banco=None, filtros=None, pdf=None,
+                       dormir=lambda x: None, log=lambda *a, **k: None)
+    assert s._ids_por_clique() == [f"39000{i:05d}" for i in range(1, 5)]
+
+
+def test_leitura_do_layout_novo_sem_h1_nem_classes(pagina):
+    from bot_vagas.linkedin import _JS_DADOS_VAGA
+
+    pagina.set_content(
+        "<html><head><title>Estágio em TI | Acme | LinkedIn</title></head><body><main>"
+        "<a href='/company/acme/life/'>Acme</a><p>Maceió, Alagoas, Brasil · há 2 dias · 12 candidaturas</p>"
+        "<span>Híbrido</span><h2>Sobre a vaga</h2><p>Atuar com Python e APIs.</p><p>Requisitos: lógica.</p></main></body></html>")
+    d = pagina.evaluate(_JS_DADOS_VAGA)
+    assert d["local"] == "Maceió, Alagoas, Brasil (Híbrido)" and d["empresa"] == "Acme"
+    assert "Atuar com Python" in d["descricao"] and "Sobre a vaga" not in d["descricao"]

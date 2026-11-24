@@ -50,7 +50,7 @@ URL_LOGIN = "https://www.linkedin.com/login"
 LINKEDIN_PADRAO = RAIZ_PROJETO / "linkedin.yaml"
 FONTE = "linkedin"
 MAX_PASSOS_FORMULARIO = 14
-SELETOR_DIALOGO = "[role=dialog]"
+SELETOR_DIALOGO = "[role=dialog], dialog[open]"
 
 
 # --- configuração --------------------------------------------------------------------------
@@ -213,18 +213,44 @@ _JS_IDS_VAGAS = r"""
 }
 """
 
+_JS_MARCAR_CARTOES = r"""
+() => {
+  // Layout novo: os cartões da lista não têm link nem ID no HTML. Marca os <li> da coluna da esquerda com
+  // tamanho de cartão, para clicar em cada um e ler o currentJobId que o LinkedIn põe na URL.
+  let n = window.__bvCartao || 0; const novos = [];
+  document.querySelectorAll('li').forEach(li => {
+    if (li.hasAttribute('data-bv-cartao') || li.closest('nav, header, footer')) return;
+    const r = li.getBoundingClientRect();
+    if (r.height < 70 || r.height > 280 || r.left > innerWidth * 0.55 || r.width < 150) return;
+    if ((li.innerText || '').trim().length < 20) return;
+    n += 1; li.setAttribute('data-bv-cartao', String(n)); novos.push(n);
+  });
+  window.__bvCartao = n; return novos;
+}
+"""
+
 _JS_DADOS_VAGA = r"""
 () => {
   const txt = (s) => { const e = document.querySelector(s); return e ? (e.innerText || e.textContent || '').trim() : ''; };
   const primeiro = (...sels) => { for (const s of sels) { const t = txt(s); if (t) return t; } return ''; };
+  // Layout novo: sem h1 nem classes estáveis. Usa o TEXTO: "Cidade · há 2 dias · N candidaturas", o modo
+  // (Remoto/Híbrido/Presencial) e o bloco depois de "Sobre a vaga".
+  const main = document.querySelector('main') || document.body;
+  const linhas = (main.innerText || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const i = linhas.findIndex(l => /^(sobre a vaga|about the job)$/i.test(l));
+  const descNova = i >= 0 ? linhas.slice(i + 1, i + 150).join('\n') : '';
+  const sub = linhas.find(l => / [·•] /.test(l) && l.length < 220 && /(h[aá] |ago|candidat|applicant|hora|dia|semana|m[eê]s|minuto|day|week|hour|month)/i.test(l))
+           || linhas.find(l => / [·•] /.test(l) && l.length < 220) || '';
+  const modo = linhas.slice(0, 80).find(l => /^(remoto|h[ií]brido|presencial|remote|hybrid|on-?site)$/i.test(l)) || '';
+  const localNovo = sub ? (sub.split(/ [·•] /)[0].trim() + (modo ? ' (' + modo + ')' : '')) : modo;
   return {
     titulo: primeiro('h1', '.job-details-jobs-unified-top-card__job-title', '[data-test-job-title]'),
     empresa: primeiro('.job-details-jobs-unified-top-card__company-name', '[data-test-company-name]',
                       'a[href*="/company/"]'),
     local: primeiro('.job-details-jobs-unified-top-card__primary-description-container',
-                    '.job-details-jobs-unified-top-card__bullet', '[data-test-job-location]'),
+                    '.job-details-jobs-unified-top-card__bullet', '[data-test-job-location]') || localNovo,
     descricao: primeiro('#job-details', '.jobs-description__content', '.jobs-box__html-content',
-                        '[data-test-job-description]'),
+                        '[data-test-job-description]') || descNova,
     titulo_aba: document.title || '',
   };
 }
@@ -383,6 +409,34 @@ class SessaoLinkedIn:
             except Exception:
                 pass
             self.pausa((0.6, 1.4))
+        if len(ids) <= 1:  # layout novo: IDs só aparecem ao selecionar cada cartão
+            ids = list(dict.fromkeys(ids + self._ids_por_clique()))
+        return ids
+
+    def _ids_por_clique(self, limite: int = 25) -> list[str]:
+        """Clica em cada cartão da lista (como uma pessoa faria) e lê o currentJobId da URL."""
+        ids: list[str] = []
+        for _ in range(4):
+            novos = self.pg.evaluate(_JS_MARCAR_CARTOES)
+            for n in novos:
+                if len(ids) >= limite:
+                    return ids
+                try:
+                    self.pg.locator(f"[data-bv-cartao='{n}']").first.click(position={"x": 70, "y": 28}, timeout=4000)
+                except Exception:
+                    continue
+                self.pausa((0.8, 1.8))
+                m = re.search(r"currentJobId=(\d{8,})", self.pg.url)
+                if m and m.group(1) not in ids:
+                    ids.append(m.group(1))
+            if not novos and ids:
+                break
+            try:
+                self.pg.mouse.move(320, 520)
+                self.pg.mouse.wheel(0, 900)
+            except Exception:
+                pass
+            self.pausa((0.6, 1.2))
         return ids
 
     def _esperar_renderizar(self) -> None:
@@ -501,7 +555,7 @@ class SessaoLinkedIn:
     def _campos_com_erro(self) -> list[str]:
         try:
             nomes = self.pg.evaluate(
-                "(sel) => Array.from(document.querySelectorAll(sel + ' [aria-invalid=true]')).map(e => "
+                "(sel) => Array.from((document.querySelector(sel) || document.createElement('div')).querySelectorAll('[aria-invalid=true]')).map(e => "
                 "(e.getAttribute('aria-label') || (e.labels && e.labels[0] ? e.labels[0].innerText : '') || e.name || e.id || 'campo')"
                 ".replace(/\\s+/g, ' ').trim().slice(0, 60))", SELETOR_DIALOGO)
             return list(dict.fromkeys(n for n in nomes if n))
